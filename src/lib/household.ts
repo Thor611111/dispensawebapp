@@ -1,45 +1,66 @@
 import { supabase } from "@/integrations/supabase/client";
 
 export async function ensureHousehold(userId: string): Promise<string> {
-  // Check current_household_id on profile
-  const { data: profile } = await supabase
+  // Ensure profile row exists (race with handle_new_user trigger)
+  const { data: profile, error: pErr } = await supabase
     .from("profiles")
     .select("current_household_id")
     .eq("id", userId)
     .maybeSingle();
+  if (pErr) throw pErr;
 
   if (profile?.current_household_id) return profile.current_household_id;
 
-  // Check if user is already a member of any household
-  const { data: memberships } = await supabase
+  if (!profile) {
+    const { error: insErr } = await supabase
+      .from("profiles")
+      .insert({ id: userId });
+    if (insErr && insErr.code !== "23505") throw insErr;
+  }
+
+  // Existing membership?
+  const { data: memberships, error: mErr } = await supabase
     .from("household_members")
     .select("household_id")
     .eq("user_id", userId)
     .limit(1);
+  if (mErr) throw mErr;
 
   if (memberships && memberships.length > 0) {
     const hid = memberships[0].household_id;
-    await supabase.from("profiles").update({ current_household_id: hid }).eq("id", userId);
+    const { error: upErr } = await supabase
+      .from("profiles")
+      .update({ current_household_id: hid })
+      .eq("id", userId);
+    if (upErr) throw upErr;
     return hid;
   }
 
-  // Create a new household
-  const { data: hh, error } = await supabase
+  // Create new household
+  const { data: hh, error: hhErr } = await supabase
     .from("households")
     .insert({ owner_id: userId, name: "Il mio nucleo" })
     .select("id")
     .single();
-  if (error || !hh) throw error ?? new Error("Impossibile creare il nucleo");
+  if (hhErr || !hh) throw hhErr ?? new Error("Impossibile creare il nucleo");
 
-  await supabase.from("household_members").insert({
+  const { error: memErr } = await supabase.from("household_members").insert({
     household_id: hh.id,
     user_id: userId,
     role: "owner",
   });
+  if (memErr) throw memErr;
 
-  await supabase.from("user_preferences").insert({ household_id: hh.id });
+  const { error: prefErr } = await supabase
+    .from("user_preferences")
+    .insert({ household_id: hh.id });
+  if (prefErr && prefErr.code !== "23505") throw prefErr;
 
-  await supabase.from("profiles").update({ current_household_id: hh.id }).eq("id", userId);
+  const { error: profUpErr } = await supabase
+    .from("profiles")
+    .update({ current_household_id: hh.id })
+    .eq("id", userId);
+  if (profUpErr) throw profUpErr;
 
   return hh.id;
 }
