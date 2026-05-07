@@ -15,6 +15,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppDispensaRouteImport } from './routes/_app/dispensa'
+import { Route as AppDispensaAggiungiRouteImport } from './routes/_app/dispensa.aggiungi'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -45,20 +46,27 @@ const AppDispensaRoute = AppDispensaRouteImport.update({
   path: '/dispensa',
   getParentRoute: () => AppRoute,
 } as any)
+const AppDispensaAggiungiRoute = AppDispensaAggiungiRouteImport.update({
+  id: '/aggiungi',
+  path: '/aggiungi',
+  getParentRoute: () => AppDispensaRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/signup': typeof SignupRoute
-  '/dispensa': typeof AppDispensaRoute
+  '/dispensa': typeof AppDispensaRouteWithChildren
+  '/dispensa/aggiungi': typeof AppDispensaAggiungiRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/signup': typeof SignupRoute
-  '/dispensa': typeof AppDispensaRoute
+  '/dispensa': typeof AppDispensaRouteWithChildren
+  '/dispensa/aggiungi': typeof AppDispensaAggiungiRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -67,13 +75,26 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/signup': typeof SignupRoute
-  '/_app/dispensa': typeof AppDispensaRoute
+  '/_app/dispensa': typeof AppDispensaRouteWithChildren
+  '/_app/dispensa/aggiungi': typeof AppDispensaAggiungiRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/onboarding' | '/signup' | '/dispensa'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/onboarding'
+    | '/signup'
+    | '/dispensa'
+    | '/dispensa/aggiungi'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/onboarding' | '/signup' | '/dispensa'
+  to:
+    | '/'
+    | '/login'
+    | '/onboarding'
+    | '/signup'
+    | '/dispensa'
+    | '/dispensa/aggiungi'
   id:
     | '__root__'
     | '/'
@@ -82,6 +103,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/signup'
     | '/_app/dispensa'
+    | '/_app/dispensa/aggiungi'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -136,15 +158,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDispensaRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/dispensa/aggiungi': {
+      id: '/_app/dispensa/aggiungi'
+      path: '/aggiungi'
+      fullPath: '/dispensa/aggiungi'
+      preLoaderRoute: typeof AppDispensaAggiungiRouteImport
+      parentRoute: typeof AppDispensaRoute
+    }
   }
 }
 
+interface AppDispensaRouteChildren {
+  AppDispensaAggiungiRoute: typeof AppDispensaAggiungiRoute
+}
+
+const AppDispensaRouteChildren: AppDispensaRouteChildren = {
+  AppDispensaAggiungiRoute: AppDispensaAggiungiRoute,
+}
+
+const AppDispensaRouteWithChildren = AppDispensaRoute._addFileChildren(
+  AppDispensaRouteChildren,
+)
+
 interface AppRouteChildren {
-  AppDispensaRoute: typeof AppDispensaRoute
+  AppDispensaRoute: typeof AppDispensaRouteWithChildren
 }
 
 const AppRouteChildren: AppRouteChildren = {
-  AppDispensaRoute: AppDispensaRoute,
+  AppDispensaRoute: AppDispensaRouteWithChildren,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
