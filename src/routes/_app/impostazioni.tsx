@@ -42,7 +42,8 @@ function Impostazioni() {
 
   const save = async () => {
     if (!hid) return;
-    const { error } = await supabase.from("user_preferences").update({
+    const { error } = await supabase.from("user_preferences").upsert({
+      household_id: hid,
       household_size: size,
       diets: diets as never,
       allergies: allergies.split(",").map((s) => s.trim()).filter(Boolean),
