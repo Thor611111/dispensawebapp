@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useHouseholdId } from "@/lib/queries";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,8 +18,9 @@ export const Route = createFileRoute("/_app/dispensa/aggiungi")({ component: Agg
 type Parsed = { name: string; quantity: number; unit: string; category?: string; location: string; price?: number; shelf_life_days?: number; _keep?: boolean };
 
 function Aggiungi() {
-  const { data: hid } = useHouseholdId();
+  const { data: hid, isLoading: loadingHousehold } = useHouseholdId();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [qty, setQty] = useState("1");
   const [unit, setUnit] = useState("pz");
@@ -32,7 +34,7 @@ function Aggiungi() {
 
   const saveManual = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!hid) return;
+    if (!hid) return toast.error("Profilo in preparazione, riprova tra un secondo");
     setSaving(true);
     const { error } = await supabase.from("food_items").insert({
       household_id: hid,
@@ -45,6 +47,7 @@ function Aggiungi() {
     });
     setSaving(false);
     if (error) return toast.error(error.message);
+    await queryClient.invalidateQueries({ queryKey: ["food", hid] });
     toast.success("Aggiunto");
     navigate({ to: "/dispensa" });
   };
@@ -60,7 +63,7 @@ function Aggiungi() {
   };
 
   const saveParsed = async () => {
-    if (!hid) return;
+    if (!hid) return toast.error("Profilo in preparazione, riprova tra un secondo");
     const keep = parsed.filter((p) => p._keep);
     if (!keep.length) return;
     setSaving(true);
@@ -81,6 +84,7 @@ function Aggiungi() {
     const { error } = await supabase.from("food_items").insert(rows);
     setSaving(false);
     if (error) return toast.error(error.message);
+    await queryClient.invalidateQueries({ queryKey: ["food", hid] });
     toast.success(`${rows.length} alimenti aggiunti`);
     navigate({ to: "/dispensa" });
   };
@@ -132,7 +136,7 @@ function Aggiungi() {
                 <Input type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} />
               </div>
             </div>
-            <Button type="submit" className="w-full" disabled={saving}>{saving ? "Salvataggio…" : "Aggiungi"}</Button>
+            <Button type="submit" className="w-full" disabled={saving || loadingHousehold}>{saving ? "Salvataggio…" : "Aggiungi"}</Button>
           </form>
         </TabsContent>
 
@@ -157,7 +161,7 @@ function Aggiungi() {
                   </Button>
                 </div>
               ))}
-              <Button className="w-full" onClick={saveParsed} disabled={saving}>
+              <Button className="w-full" onClick={saveParsed} disabled={saving || loadingHousehold}>
                 {saving ? "Salvataggio…" : `Aggiungi ${parsed.filter((p) => p._keep).length} alimenti`}
               </Button>
             </div>

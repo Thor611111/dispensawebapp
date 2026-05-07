@@ -21,6 +21,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { useQueryClient } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/_app/impostazioni")({ component: Impostazioni });
 
@@ -33,6 +34,7 @@ const DIETS = [
 function Impostazioni() {
   const { user, signOut } = useAuth();
   const nav = useNavigate();
+  const queryClient = useQueryClient();
   const { data: hid } = useHouseholdId();
   const { data: prefs } = usePreferences(hid);
   const { data: expenses = [] } = useExpenses(hid);
@@ -52,7 +54,7 @@ function Impostazioni() {
   }, [prefs]);
 
   const save = async () => {
-    if (!hid) return;
+    if (!hid) return toast.error("Profilo in preparazione, riprova tra un secondo");
     const { error } = await supabase.from("user_preferences").upsert({
       household_id: hid,
       household_size: size,
@@ -61,6 +63,7 @@ function Impostazioni() {
       weekly_budget: budget ? Number(budget) : null,
     });
     if (error) return toast.error(error.message);
+    await queryClient.invalidateQueries({ queryKey: ["prefs", hid] });
     toast.success("Salvato");
   };
 
