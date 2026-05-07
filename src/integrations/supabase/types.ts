@@ -61,6 +61,7 @@ export type Database = {
           household_id: string
           id: string
           kcal_per_unit: number | null
+          last_used_at: string | null
           location: Database["public"]["Enums"]["food_location"]
           name: string
           pantry_id: string | null
@@ -77,6 +78,7 @@ export type Database = {
           household_id: string
           id?: string
           kcal_per_unit?: number | null
+          last_used_at?: string | null
           location?: Database["public"]["Enums"]["food_location"]
           name: string
           pantry_id?: string | null
@@ -93,6 +95,7 @@ export type Database = {
           household_id?: string
           id?: string
           kcal_per_unit?: number | null
+          last_used_at?: string | null
           location?: Database["public"]["Enums"]["food_location"]
           name?: string
           pantry_id?: string | null
@@ -548,6 +551,7 @@ export type Database = {
           goals: string[]
           household_id: string
           household_size: number
+          monthly_budget: number | null
           updated_at: string
           weekly_budget: number | null
         }
@@ -559,6 +563,7 @@ export type Database = {
           goals?: string[]
           household_id: string
           household_size?: number
+          monthly_budget?: number | null
           updated_at?: string
           weekly_budget?: number | null
         }
@@ -570,6 +575,7 @@ export type Database = {
           goals?: string[]
           household_id?: string
           household_size?: number
+          monthly_budget?: number | null
           updated_at?: string
           weekly_budget?: number | null
         }
