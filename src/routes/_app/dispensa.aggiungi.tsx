@@ -77,11 +77,9 @@ function Aggiungi() {
         const p = json.product;
         const productName = p.product_name_it || p.product_name || `Prodotto ${code}`;
         setName(productName);
-        const cat = (p.categories_tags?.[0] ?? "").replace(/^[a-z]{2}:/, "").replace(/-/g, " ");
-        if (cat) toast.success(`Trovato: ${productName}`);
         const kcalVal = p.nutriments?.["energy-kcal_100g"] ?? p.nutriments?.["energy-kcal"];
         if (kcalVal) setKcal(String(Math.round(kcalVal)));
-        toast.success(productName);
+        toast.success(`Trovato: ${productName}`);
       } else {
         toast.message(`Codice ${code}: prodotto non trovato. Compila a mano.`);
       }
