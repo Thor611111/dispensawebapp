@@ -42,12 +42,13 @@ function Impostazioni() {
 
   const save = async () => {
     if (!hid) return;
-    const { error } = await supabase.from("user_preferences").update({
+    const { error } = await supabase.from("user_preferences").upsert({
+      household_id: hid,
       household_size: size,
       diets: diets as never,
       allergies: allergies.split(",").map((s) => s.trim()).filter(Boolean),
       weekly_budget: budget ? Number(budget) : null,
-    }).eq("household_id", hid);
+    });
     if (error) return toast.error(error.message);
     toast.success("Salvato");
   };
