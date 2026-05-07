@@ -29,8 +29,8 @@ function Ricette() {
 
   if (location.pathname !== "/ricette") return <Outlet />;
 
-  const likes = feedback.filter((f) => f.feedback === "like").map((f) => f.recipe_title).filter(Boolean) as string[];
-  const dislikes = feedback.filter((f) => f.feedback === "dislike").map((f) => f.recipe_title).filter(Boolean) as string[];
+  const likes = feedback.filter((f) => f.feedback === "liked").map((f) => f.recipe_title).filter(Boolean) as string[];
+  const dislikes = feedback.filter((f) => f.feedback === "disliked").map((f) => f.recipe_title).filter(Boolean) as string[];
   const myFeedback = (title: string) => feedback.find((f) => f.recipe_title === title && f.user_id === user?.id)?.feedback;
 
   const generate = async () => {
@@ -42,7 +42,7 @@ function Ricette() {
     setRecipes(data.recipes ?? []);
   };
 
-  const giveFeedback = async (title: string, fb: "like" | "dislike") => {
+  const giveFeedback = async (title: string, fb: "liked" | "disliked") => {
     if (!user) return;
     const existing = feedback.find((f) => f.recipe_title === title && f.user_id === user.id);
     if (existing && existing.feedback === fb) {
@@ -125,8 +125,8 @@ function Ricette() {
                   <div className="mb-2 flex items-start justify-between gap-3">
                     <h3 className="font-semibold leading-tight">{r.title}</h3>
                     <div className="flex gap-1">
-                      <Button size="icon" variant={fb === "like" ? "default" : "ghost"} onClick={() => giveFeedback(r.title, "like")} title="Mi piace"><ThumbsUp className="h-4 w-4" /></Button>
-                      <Button size="icon" variant={fb === "dislike" ? "default" : "ghost"} onClick={() => giveFeedback(r.title, "dislike")} title="No grazie"><ThumbsDown className="h-4 w-4" /></Button>
+                      <Button size="icon" variant={fb === "liked" ? "default" : "ghost"} onClick={() => giveFeedback(r.title, "liked")} title="Mi piace"><ThumbsUp className="h-4 w-4" /></Button>
+                      <Button size="icon" variant={fb === "disliked" ? "default" : "ghost"} onClick={() => giveFeedback(r.title, "disliked")} title="No grazie"><ThumbsDown className="h-4 w-4" /></Button>
                     </div>
                   </div>
                   <p className="mb-2 text-sm text-primary">💡 {r.reason}</p>
