@@ -7,13 +7,13 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
 
   try {
-    const { foodItems, preferences, count = 5 } = await req.json();
+    const { foodItems, preferences, count = 5, likes = [], dislikes = [] } = await req.json();
     const apiKey = Deno.env.get("LOVABLE_API_KEY");
     if (!apiKey) throw new Error("LOVABLE_API_KEY missing");
 
     const ctx = `Dispensa attuale (con scadenze):\n${(foodItems ?? [])
       .map((f: any) => `- ${f.name} (${f.quantity}${f.unit}${f.expires_on ? `, scade ${f.expires_on}` : ""})`)
-      .join("\n") || "(vuota)"}\n\nPreferenze:\n- Persone: ${preferences?.household_size ?? 2}\n- Diete: ${(preferences?.diets ?? []).join(", ") || "nessuna"}\n- Allergie: ${(preferences?.allergies ?? []).join(", ") || "nessuna"}\n- Obiettivi: ${(preferences?.goals ?? []).join(", ") || "—"}\n- Budget settimanale: ${preferences?.weekly_budget ?? "non impostato"} EUR`;
+      .join("\n") || "(vuota)"}\n\nPreferenze:\n- Persone: ${preferences?.household_size ?? 2}\n- Diete: ${(preferences?.diets ?? []).join(", ") || "nessuna"}\n- Allergie: ${(preferences?.allergies ?? []).join(", ") || "nessuna"}\n- Obiettivi: ${(preferences?.goals ?? []).join(", ") || "—"}\n- Budget settimanale: ${preferences?.weekly_budget ?? "non impostato"} EUR\n- Ricette gradite (proponi simili): ${likes.join(", ") || "—"}\n- Ricette NON gradite (EVITA assolutamente piatti simili): ${dislikes.join(", ") || "—"}`;
 
     const body = {
       model: "google/gemini-3-flash-preview",

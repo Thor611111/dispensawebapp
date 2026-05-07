@@ -50,6 +50,7 @@ Deno.serve(async (req) => {
                       location: { type: "string", enum: ["fridge", "freezer", "pantry", "other"] },
                       price: { type: "number" },
                       shelf_life_days: { type: "integer", description: "Giorni stimati prima della scadenza dall'oggi" },
+                      kcal_per_unit: { type: "number", description: "Calorie stimate per unità (es. per pz, per 100g, per L)" },
                     },
                     required: ["name", "quantity", "unit", "location"],
                   },
