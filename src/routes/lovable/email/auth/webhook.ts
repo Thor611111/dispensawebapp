@@ -90,7 +90,8 @@ export const Route = createFileRoute("/lovable/email/auth/webhook")({
             }
           }
 
-          console.error('Webhook verification failed', { error })
+          const msg = error instanceof Error ? error.message : String(error)
+          console.error('Webhook verification failed', { error: msg })
           return Response.json(
             { error: 'Invalid webhook payload' },
             { status: 400 }
