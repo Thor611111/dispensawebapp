@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Link2, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/ricette/nuova")({ component: Nuova });
@@ -24,6 +26,24 @@ function Nuova() {
   const [ingredientsText, setIngredientsText] = useState("");
   const [instructions, setInstructions] = useState("");
   const [saving, setSaving] = useState(false);
+  const [url, setUrl] = useState("");
+  const [importing, setImporting] = useState(false);
+
+  const importFromUrl = async () => {
+    if (!url.trim()) return toast.error("Inserisci un URL");
+    setImporting(true);
+    const { data, error } = await supabase.functions.invoke("ai-import-recipe", { body: { url } });
+    setImporting(false);
+    if (error || data?.error) return toast.error(error?.message ?? data?.error);
+    setTitle(data.title ?? "");
+    setPrep(data.prep_minutes ? String(data.prep_minutes) : "");
+    setCost(data.estimated_cost ? String(data.estimated_cost) : "");
+    setDiff(data.difficulty ?? "");
+    setServings(data.servings ? String(data.servings) : "2");
+    setInstructions(data.instructions ?? "");
+    setIngredientsText((data.ingredients ?? []).map((i: any) => [i.quantity, i.unit, i.name].filter(Boolean).join(" ")).join("\n"));
+    toast.success("Ricetta importata, controlla e salva");
+  };
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,6 +72,20 @@ function Nuova() {
   return (
     <div>
       <PageHeader title="Nuova ricetta" subtitle="Salva la tua ricetta personale." />
+      <Tabs defaultValue="manual" className="mb-4">
+        <TabsList className="w-full">
+          <TabsTrigger value="manual" className="flex-1">Manuale</TabsTrigger>
+          <TabsTrigger value="url" className="flex-1"><Link2 className="mr-1 h-3.5 w-3.5" /> Da link</TabsTrigger>
+        </TabsList>
+        <TabsContent value="url" className="space-y-3">
+          <p className="text-sm text-muted-foreground">Incolla l'URL di una ricetta. L'AI estrae ingredienti e passi.</p>
+          <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…" />
+          <Button onClick={importFromUrl} disabled={importing} className="w-full">
+            {importing ? <><Loader2 className="h-4 w-4 animate-spin" /> Importo…</> : <><Sparkles className="h-4 w-4" /> Importa con AI</>}
+          </Button>
+        </TabsContent>
+        <TabsContent value="manual" />
+      </Tabs>
       <form onSubmit={save} className="space-y-3">
         <div className="space-y-1.5"><Label>Titolo</Label><Input required value={title} onChange={(e) => setTitle(e.target.value)} /></div>
         <div className="grid grid-cols-3 gap-3">

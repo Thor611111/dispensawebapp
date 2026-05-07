@@ -40,6 +40,32 @@ function Spesa() {
 
   const effectivePantry = pantryId || pantries[0]?.id || null;
 
+  // Ask AI to classify items: location, category, shelf-life, kcal
+  const classifyFoods = async (names: string[]): Promise<Record<string, any>> => {
+    if (!names.length) return {};
+    try {
+      const { data } = await supabase.functions.invoke("ai-classify-foods", { body: { names } });
+      const map: Record<string, any> = {};
+      for (const it of (data?.items ?? [])) map[it.name.toLowerCase()] = it;
+      return map;
+    } catch {
+      return {};
+    }
+  };
+
+  const enrich = (row: any, info: any) => {
+    if (!info) return row;
+    const today = new Date();
+    const exp = info.shelf_life_days ? new Date(today.getTime() + info.shelf_life_days * 86400000).toISOString().slice(0, 10) : null;
+    return {
+      ...row,
+      location: (info.location ?? row.location ?? "pantry"),
+      category: info.category ?? row.category ?? null,
+      kcal_per_unit: info.kcal_per_unit ?? row.kcal_per_unit ?? null,
+      expires_on: row.expires_on ?? exp,
+    };
+  };
+
   const add = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!hid || !name.trim()) return;
@@ -69,10 +95,12 @@ function Spesa() {
     const price = buyPrice ? Number(buyPrice) : 0;
     const qty = Number(buyQty) || 1;
     const today = new Date().toISOString().slice(0, 10);
-    await supabase.from("food_items").insert({
+    const info = await classifyFoods([buyItem.name]);
+    const base = {
       household_id: hid, name: buyItem.name, quantity: qty, unit: buyItem.unit ?? "pz",
       location: "pantry" as const, price: price || null, pantry_id: effectivePantry,
-    });
+    };
+    await supabase.from("food_items").insert(enrich(base, info[buyItem.name.toLowerCase()]));
     if (price > 0) await supabase.from("expenses").insert({ household_id: hid, amount: price, spent_on: today, note: `Spesa: ${buyItem.name}` });
     await supabase.from("shopping_list_items").delete().eq("id", buyItem.id);
     setBuyItem(null);
@@ -110,10 +138,11 @@ function Spesa() {
     if (!total || total <= 0) return toast.error("Inserisci l'importo totale");
     setClosing(true);
     const today = new Date().toISOString().slice(0, 10);
-    await supabase.from("food_items").insert(checked.map((c) => ({
+    const info = await classifyFoods(checked.map((c) => c.name));
+    await supabase.from("food_items").insert(checked.map((c) => enrich({
       household_id: hid, name: c.name, quantity: c.quantity, unit: c.unit,
       location: "pantry" as const, price: c.estimated_price, pantry_id: effectivePantry,
-    })));
+    }, info[c.name.toLowerCase()])));
     await supabase.from("expenses").insert({ household_id: hid, amount: total, spent_on: today, note: "Spesa" });
     await supabase.from("shopping_list_items").delete().in("id", checked.map((c) => c.id));
     setClosing(false);
@@ -132,13 +161,14 @@ function Spesa() {
     const today = new Date().toISOString().slice(0, 10);
     const checked = items.filter((i) => i.checked);
     const usedShopping = new Set<string>();
+    const info = await classifyFoods(scanResult.items.map((si) => si.name));
     const rows = scanResult.items.map((si) => {
       const match = checked.find((c) => !usedShopping.has(c.id) && c.name.toLowerCase().includes(si.name.toLowerCase().slice(0, 4)));
       if (match) usedShopping.add(match.id);
-      return {
+      return enrich({
         household_id: hid, name: si.name, quantity: si.quantity ?? 1, unit: si.unit ?? "pz",
         location: "pantry" as const, price: si.price ?? null, pantry_id: effectivePantry,
-      };
+      }, info[si.name.toLowerCase()]);
     });
     if (rows.length) await supabase.from("food_items").insert(rows);
     const total = scanResult.total || rows.reduce((s, r) => s + Number(r.price ?? 0), 0);
