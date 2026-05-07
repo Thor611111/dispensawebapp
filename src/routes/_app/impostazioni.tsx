@@ -44,6 +44,9 @@ function Impostazioni() {
   const [allergies, setAllergies] = useState("");
   const [budget, setBudget] = useState("");
   const [monthlyBudget, setMonthlyBudget] = useState("");
+  const [newPwd, setNewPwd] = useState("");
+  const [confirmPwd, setConfirmPwd] = useState("");
+  const [pwdLoading, setPwdLoading] = useState(false);
 
   useEffect(() => {
     if (prefs) {
@@ -89,6 +92,17 @@ function Impostazioni() {
     nav({ to: "/" });
   };
 
+  const changePassword = async () => {
+    if (newPwd.length < 6) return toast.error("La password deve essere di almeno 6 caratteri");
+    if (newPwd !== confirmPwd) return toast.error("Le password non coincidono");
+    setPwdLoading(true);
+    const { error } = await supabase.auth.updateUser({ password: newPwd });
+    setPwdLoading(false);
+    if (error) return toast.error(error.message);
+    setNewPwd(""); setConfirmPwd("");
+    toast.success("Password aggiornata");
+  };
+
   return (
     <div>
       <PageHeader title="Profilo" subtitle={user?.email ?? ""} />
@@ -130,6 +144,22 @@ function Impostazioni() {
           <Input type="number" value={monthlyBudget} onChange={(e) => setMonthlyBudget(e.target.value)} />
         </div>
         <Button className="w-full" onClick={save}>Salva preferenze</Button>
+
+        <div className="rounded-xl border bg-card p-4 space-y-3">
+          <p className="font-semibold">Modifica password</p>
+          <div className="space-y-2">
+            <Label>Nuova password</Label>
+            <Input type="password" value={newPwd} onChange={(e) => setNewPwd(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label>Conferma password</Label>
+            <Input type="password" value={confirmPwd} onChange={(e) => setConfirmPwd(e.target.value)} />
+          </div>
+          <Button variant="secondary" className="w-full" disabled={pwdLoading} onClick={changePassword}>
+            {pwdLoading ? "Aggiornamento…" : "Aggiorna password"}
+          </Button>
+        </div>
+
         <Button variant="outline" className="w-full" onClick={logout}><LogOut className="h-4 w-4" /> Esci</Button>
         <AlertDialog>
           <AlertDialogTrigger asChild>
