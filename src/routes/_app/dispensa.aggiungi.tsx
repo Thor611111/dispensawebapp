@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { useHouseholdId } from "@/lib/queries";
+import { useHouseholdId, usePantries } from "@/lib/queries";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
@@ -10,27 +10,33 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sparkles, Loader2, Check, X } from "lucide-react";
+import { Sparkles, Loader2, Check, X, Flame } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/dispensa/aggiungi")({ component: Aggiungi });
 
-type Parsed = { name: string; quantity: number; unit: string; category?: string; location: string; price?: number; shelf_life_days?: number; _keep?: boolean };
+type Parsed = { name: string; quantity: number; unit: string; category?: string; location: string; price?: number; shelf_life_days?: number; kcal_per_unit?: number; _keep?: boolean };
 
 function Aggiungi() {
   const { data: hid, isLoading: loadingHousehold } = useHouseholdId();
+  const { data: pantries = [] } = usePantries(hid);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [qty, setQty] = useState("1");
   const [unit, setUnit] = useState("pz");
   const [location, setLocation] = useState("pantry");
+  const [pantryId, setPantryId] = useState<string>("");
   const [expires, setExpires] = useState("");
   const [price, setPrice] = useState("");
+  const [kcal, setKcal] = useState("");
+  const [calcLoading, setCalcLoading] = useState(false);
   const [text, setText] = useState("");
   const [parsing, setParsing] = useState(false);
   const [parsed, setParsed] = useState<Parsed[]>([]);
   const [saving, setSaving] = useState(false);
+
+  const effectivePantry = pantryId || pantries[0]?.id || null;
 
   const saveManual = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,12 +50,23 @@ function Aggiungi() {
       location: location as never,
       expires_on: expires || null,
       price: price ? Number(price) : null,
+      kcal_per_unit: kcal ? Number(kcal) : null,
+      pantry_id: effectivePantry,
     });
     setSaving(false);
     if (error) return toast.error(error.message);
     await queryClient.invalidateQueries({ queryKey: ["food", hid] });
     toast.success("Aggiunto");
     navigate({ to: "/dispensa" });
+  };
+
+  const calcKcal = async () => {
+    if (!name.trim()) return toast.error("Inserisci prima il nome");
+    setCalcLoading(true);
+    const { data, error } = await supabase.functions.invoke("ai-calc-kcal", { body: { name, quantity: 1, unit } });
+    setCalcLoading(false);
+    if (error || data?.error) return toast.error(error?.message ?? data?.error);
+    if (data?.kcal) setKcal(String(data.kcal));
   };
 
   const parseAi = async () => {
@@ -78,6 +95,8 @@ function Aggiungi() {
         location: (p.location ?? "pantry") as never,
         category: p.category ?? null,
         price: p.price ?? null,
+        kcal_per_unit: p.kcal_per_unit ?? null,
+        pantry_id: effectivePantry,
         expires_on: exp,
       };
     });
@@ -126,6 +145,17 @@ function Aggiungi() {
                 </SelectContent>
               </Select>
             </div>
+            {pantries.length > 1 && (
+              <div className="space-y-1.5">
+                <Label>Dispensa</Label>
+                <Select value={pantryId || pantries[0]?.id} onValueChange={setPantryId}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {pantries.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Scadenza</Label>
@@ -134,6 +164,15 @@ function Aggiungi() {
               <div className="space-y-1.5">
                 <Label>Prezzo (€)</Label>
                 <Input type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Kcal per unità</Label>
+              <div className="flex gap-2">
+                <Input type="number" step="1" value={kcal} onChange={(e) => setKcal(e.target.value)} placeholder="es. 89" />
+                <Button type="button" variant="outline" onClick={calcKcal} disabled={calcLoading || !name.trim()}>
+                  {calcLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Flame className="h-4 w-4" />} AI
+                </Button>
               </div>
             </div>
             <Button type="submit" className="w-full" disabled={saving || loadingHousehold}>{saving ? "Salvataggio…" : "Aggiungi"}</Button>

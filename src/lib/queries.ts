@@ -42,6 +42,61 @@ export function useFoodItems(householdId: string | null | undefined) {
   });
 }
 
+export function usePantries(householdId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["pantries", householdId],
+    enabled: !!householdId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("pantries")
+        .select("*")
+        .eq("household_id", householdId!)
+        .order("created_at");
+      return data ?? [];
+    },
+  });
+}
+
+export function useSavedRecipes(householdId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["recipes", householdId],
+    enabled: !!householdId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("recipes")
+        .select("*, recipe_ingredients(*)")
+        .eq("household_id", householdId!)
+        .order("created_at", { ascending: false });
+      return data ?? [];
+    },
+  });
+}
+
+export function useRecipeFeedback() {
+  return useQuery({
+    queryKey: ["recipe-feedback"],
+    queryFn: async () => {
+      const { data } = await supabase.from("recipe_feedback").select("*");
+      return data ?? [];
+    },
+  });
+}
+
+export function useRecommendedProducts(householdId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["recommended", householdId],
+    enabled: !!householdId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("recommended_products")
+        .select("*")
+        .eq("household_id", householdId!)
+        .order("created_at", { ascending: false });
+      return data ?? [];
+    },
+  });
+}
+
 export function useShoppingList(householdId: string | null | undefined) {
   return useQuery({
     queryKey: ["shopping", householdId],
