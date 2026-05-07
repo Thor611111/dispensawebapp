@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Trash2, Refrigerator, Snowflake, Package2, Box, Trash, Flame } from "lucide-react";
+import { Plus, Trash2, Refrigerator, Snowflake, Package2, Box, Trash } from "lucide-react";
 import { toast } from "sonner";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
