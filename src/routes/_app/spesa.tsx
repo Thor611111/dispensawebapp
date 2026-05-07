@@ -1,14 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useHouseholdId, useShoppingList, useExpenses, usePreferences, useFoodItems, useRecommendedProducts, currentWeekStart } from "@/lib/queries";
+import { useHouseholdId, useShoppingList, useExpenses, usePreferences, useFoodItems, useRecommendedProducts, usePantries, currentWeekStart } from "@/lib/queries";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
-import { Plus, ShoppingBag, Trash2, Sparkles, Loader2 } from "lucide-react";
+import { Plus, ShoppingBag, Trash2, Sparkles, Loader2, Check, Camera, Receipt } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/spesa")({ component: Spesa });
@@ -20,9 +24,21 @@ function Spesa() {
   const { data: prefs } = usePreferences(hid);
   const { data: foods = [] } = useFoodItems(hid);
   const { data: recs = [] } = useRecommendedProducts(hid);
+  const { data: pantries = [] } = usePantries(hid);
   const qc = useQueryClient();
   const [name, setName] = useState("");
   const [genLoading, setGenLoading] = useState(false);
+  const [pantryId, setPantryId] = useState<string>("");
+  const [buyItem, setBuyItem] = useState<any>(null);
+  const [buyPrice, setBuyPrice] = useState("");
+  const [buyQty, setBuyQty] = useState("1");
+  const [closeOpen, setCloseOpen] = useState(false);
+  const [totalAmount, setTotalAmount] = useState("");
+  const [scanLoading, setScanLoading] = useState(false);
+  const [scanResult, setScanResult] = useState<{ items: any[]; total: number } | null>(null);
+  const [closing, setClosing] = useState(false);
+
+  const effectivePantry = pantryId || pantries[0]?.id || null;
 
   const add = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,20 +58,100 @@ function Spesa() {
     qc.invalidateQueries({ queryKey: ["shopping", hid] });
   };
 
-  const purchase = async () => {
-    if (!hid) return;
-    const checked = items.filter((i) => i.checked);
-    if (!checked.length) return;
+  const openBuy = (it: any) => {
+    setBuyItem(it);
+    setBuyPrice(it.estimated_price ? String(it.estimated_price) : "");
+    setBuyQty(String(it.quantity ?? 1));
+  };
+
+  const confirmBuy = async () => {
+    if (!hid || !buyItem) return;
+    const price = buyPrice ? Number(buyPrice) : 0;
+    const qty = Number(buyQty) || 1;
     const today = new Date().toISOString().slice(0, 10);
-    const total = checked.reduce((s, i) => s + Number(i.estimated_price ?? 0), 0);
-    await supabase.from("food_items").insert(
-      checked.map((c) => ({ household_id: hid, name: c.name, quantity: c.quantity, unit: c.unit, location: "pantry" as const, price: c.estimated_price })),
-    );
-    if (total > 0) await supabase.from("expenses").insert({ household_id: hid, amount: total, spent_on: today, note: "Spesa" });
-    await supabase.from("shopping_list_items").delete().in("id", checked.map((c) => c.id));
+    await supabase.from("food_items").insert({
+      household_id: hid, name: buyItem.name, quantity: qty, unit: buyItem.unit ?? "pz",
+      location: "pantry" as const, price: price || null, pantry_id: effectivePantry,
+    });
+    if (price > 0) await supabase.from("expenses").insert({ household_id: hid, amount: price, spent_on: today, note: `Spesa: ${buyItem.name}` });
+    await supabase.from("shopping_list_items").delete().eq("id", buyItem.id);
+    setBuyItem(null);
     qc.invalidateQueries({ queryKey: ["shopping", hid] });
     qc.invalidateQueries({ queryKey: ["food", hid] });
-    toast.success(`${checked.length} articoli aggiunti alla dispensa`);
+    qc.invalidateQueries({ queryKey: ["expenses", hid] });
+    toast.success("Aggiunto in dispensa");
+  };
+
+  const fileToBase64 = (file: File): Promise<string> => new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result as string);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+
+  const onReceiptFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setScanLoading(true);
+    setScanResult(null);
+    const b64 = await fileToBase64(f);
+    const { data, error } = await supabase.functions.invoke("ai-scan-receipt", { body: { imageBase64: b64 } });
+    setScanLoading(false);
+    if (error || data?.error) return toast.error(error?.message ?? data?.error);
+    setScanResult({ items: data.items ?? [], total: Number(data.total ?? 0) });
+    if (!totalAmount && data.total) setTotalAmount(String(data.total));
+  };
+
+  const closeWithTotal = async () => {
+    if (!hid) return;
+    const checked = items.filter((i) => i.checked);
+    if (!checked.length) return toast.error("Nessun articolo spuntato");
+    const total = Number(totalAmount);
+    if (!total || total <= 0) return toast.error("Inserisci l'importo totale");
+    setClosing(true);
+    const today = new Date().toISOString().slice(0, 10);
+    await supabase.from("food_items").insert(checked.map((c) => ({
+      household_id: hid, name: c.name, quantity: c.quantity, unit: c.unit,
+      location: "pantry" as const, price: c.estimated_price, pantry_id: effectivePantry,
+    })));
+    await supabase.from("expenses").insert({ household_id: hid, amount: total, spent_on: today, note: "Spesa" });
+    await supabase.from("shopping_list_items").delete().in("id", checked.map((c) => c.id));
+    setClosing(false);
+    setCloseOpen(false);
+    setTotalAmount("");
+    setScanResult(null);
+    qc.invalidateQueries({ queryKey: ["shopping", hid] });
+    qc.invalidateQueries({ queryKey: ["food", hid] });
+    qc.invalidateQueries({ queryKey: ["expenses", hid] });
+    toast.success(`${checked.length} articoli in dispensa, ${total.toFixed(2)} € registrati`);
+  };
+
+  const closeWithScan = async () => {
+    if (!hid || !scanResult) return;
+    setClosing(true);
+    const today = new Date().toISOString().slice(0, 10);
+    const checked = items.filter((i) => i.checked);
+    const usedShopping = new Set<string>();
+    const rows = scanResult.items.map((si) => {
+      const match = checked.find((c) => !usedShopping.has(c.id) && c.name.toLowerCase().includes(si.name.toLowerCase().slice(0, 4)));
+      if (match) usedShopping.add(match.id);
+      return {
+        household_id: hid, name: si.name, quantity: si.quantity ?? 1, unit: si.unit ?? "pz",
+        location: "pantry" as const, price: si.price ?? null, pantry_id: effectivePantry,
+      };
+    });
+    if (rows.length) await supabase.from("food_items").insert(rows);
+    const total = scanResult.total || rows.reduce((s, r) => s + Number(r.price ?? 0), 0);
+    if (total > 0) await supabase.from("expenses").insert({ household_id: hid, amount: total, spent_on: today, note: "Spesa (scontrino)" });
+    if (usedShopping.size) await supabase.from("shopping_list_items").delete().in("id", Array.from(usedShopping));
+    setClosing(false);
+    setCloseOpen(false);
+    setScanResult(null);
+    setTotalAmount("");
+    qc.invalidateQueries({ queryKey: ["shopping", hid] });
+    qc.invalidateQueries({ queryKey: ["food", hid] });
+    qc.invalidateQueries({ queryKey: ["expenses", hid] });
+    toast.success(`${rows.length} articoli aggiunti, ${total.toFixed(2)} € registrati`);
   };
 
   const total = items.filter((i) => !i.checked).reduce((s, i) => s + Number(i.estimated_price ?? 0), 0);
@@ -90,6 +186,18 @@ function Spesa() {
   return (
     <div>
       <PageHeader title="Lista spesa" subtitle={total > 0 ? `Stima rimanente: ~${total.toFixed(2)} €` : "Aggiungi cosa ti serve."} />
+
+      {pantries.length > 0 && (
+        <div className="mb-4 rounded-2xl border bg-card p-3">
+          <Label className="text-xs text-muted-foreground">Dispensa di destinazione</Label>
+          <Select value={pantryId || pantries[0]?.id} onValueChange={setPantryId}>
+            <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {pantries.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {budget > 0 && (
         <div className="mb-4 rounded-2xl border bg-card p-4">
@@ -142,6 +250,7 @@ function Spesa() {
                 <p className={`truncate text-sm ${it.checked ? "text-muted-foreground line-through" : ""}`}>{it.name}</p>
                 <p className="text-xs text-muted-foreground">{it.quantity} {it.unit}{it.estimated_price ? ` · ${Number(it.estimated_price).toFixed(2)} €` : ""}</p>
               </div>
+              <Button size="icon" variant="ghost" onClick={() => openBuy(it)} title="Acquistato"><Check className="h-4 w-4 text-primary" /></Button>
               <Button size="icon" variant="ghost" onClick={() => remove(it.id)}><Trash2 className="h-4 w-4 text-muted-foreground" /></Button>
             </li>
           ))}
@@ -149,8 +258,67 @@ function Spesa() {
       )}
 
       {checkedCount > 0 && (
-        <Button className="mt-4 w-full" onClick={purchase}><ShoppingBag className="h-4 w-4" /> Spesa fatta ({checkedCount})</Button>
+        <Button className="mt-4 w-full" onClick={() => setCloseOpen(true)}><ShoppingBag className="h-4 w-4" /> Chiudi spesa ({checkedCount})</Button>
       )}
+
+      {/* Single item purchase dialog */}
+      <Dialog open={!!buyItem} onOpenChange={(o) => !o && setBuyItem(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Acquistato: {buyItem?.name}</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5"><Label>Quantità</Label><Input type="number" step="0.01" value={buyQty} onChange={(e) => setBuyQty(e.target.value)} /></div>
+              <div className="space-y-1.5"><Label>Prezzo (€)</Label><Input type="number" step="0.01" value={buyPrice} onChange={(e) => setBuyPrice(e.target.value)} placeholder="0.00" /></div>
+            </div>
+            <p className="text-xs text-muted-foreground">Verrà aggiunto a {pantries.find((p) => p.id === effectivePantry)?.name ?? "dispensa"} e scalato dal budget.</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBuyItem(null)}>Annulla</Button>
+            <Button onClick={confirmBuy}>Conferma</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Close shopping dialog */}
+      <Dialog open={closeOpen} onOpenChange={setCloseOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Chiudi spesa</DialogTitle></DialogHeader>
+          <Tabs defaultValue="total">
+            <TabsList className="w-full">
+              <TabsTrigger value="total" className="flex-1"><Receipt className="mr-1 h-3.5 w-3.5" />Totale</TabsTrigger>
+              <TabsTrigger value="scan" className="flex-1"><Camera className="mr-1 h-3.5 w-3.5" />Foto scontrino</TabsTrigger>
+            </TabsList>
+            <TabsContent value="total" className="space-y-3">
+              <div className="space-y-1.5">
+                <Label>Importo totale scontrino (€)</Label>
+                <Input type="number" step="0.01" value={totalAmount} onChange={(e) => setTotalAmount(e.target.value)} placeholder="es. 42.80" />
+              </div>
+              <p className="text-xs text-muted-foreground">{checkedCount} articoli verranno aggiunti in dispensa.</p>
+              <Button className="w-full" onClick={closeWithTotal} disabled={closing}>{closing ? "Salvataggio…" : "Conferma"}</Button>
+            </TabsContent>
+            <TabsContent value="scan" className="space-y-3">
+              <Label className="block">
+                <div className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed p-6 text-sm text-muted-foreground hover:bg-secondary/30">
+                  {scanLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+                  {scanLoading ? "Analisi…" : "Scatta o carica scontrino"}
+                </div>
+                <input type="file" accept="image/*" capture="environment" className="hidden" onChange={onReceiptFile} disabled={scanLoading} />
+              </Label>
+              {scanResult && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Trovati {scanResult.items.length} articoli · totale {scanResult.total.toFixed(2)} €</p>
+                  <ul className="max-h-48 overflow-auto rounded-lg border bg-secondary/20 p-2 text-xs">
+                    {scanResult.items.map((si, i) => (
+                      <li key={i} className="flex justify-between py-0.5"><span className="truncate">{si.name}</span><span>{Number(si.price).toFixed(2)} €</span></li>
+                    ))}
+                  </ul>
+                  <Button className="w-full" onClick={closeWithScan} disabled={closing}>{closing ? "Salvataggio…" : "Aggiungi tutto in dispensa"}</Button>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
