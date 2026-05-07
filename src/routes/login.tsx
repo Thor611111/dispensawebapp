@@ -26,11 +26,11 @@ function LoginPage() {
       toast.error(error.message);
       return;
     }
-    navigate({ to: "/dispensa" });
+    navigate({ to: "/home" });
   };
 
   const google = async () => {
-    const r = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin + "/dispensa" });
+    const r = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin + "/home" });
     if (r.error) toast.error(r.error.message ?? "Errore di accesso");
   };
 

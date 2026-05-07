@@ -3,6 +3,7 @@ import { Home, Package, ChefHat, Calendar, ShoppingCart, Settings as SettingsIco
 import { cn } from "@/lib/utils";
 
 const tabs = [
+  { to: "/home", label: "Home", icon: Home },
   { to: "/dispensa", label: "Dispensa", icon: Package },
   { to: "/ricette", label: "Ricette", icon: ChefHat },
   { to: "/piano", label: "Piano", icon: Calendar },
