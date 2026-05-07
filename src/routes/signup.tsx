@@ -17,11 +17,12 @@ function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [sentEmail, setSentEmail] = useState<string | null>(null);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -34,14 +35,40 @@ function SignupPage() {
       toast.error(error.message);
       return;
     }
-    toast.success("Account creato! Controlla la mail per confermare.");
-    navigate({ to: "/onboarding" });
+    // If we have a session immediately (auto-confirm), go to onboarding.
+    if (data.session) {
+      navigate({ to: "/onboarding" });
+      return;
+    }
+    // Otherwise wait for email confirmation.
+    setSentEmail(email);
   };
 
   const google = async () => {
     const r = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin + "/onboarding" });
     if (r.error) toast.error(r.error.message ?? "Errore");
   };
+
+  if (sentEmail) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
+        <div className="w-full max-w-sm text-center">
+          <Link to="/" className="mb-8 flex items-center justify-center gap-2">
+            <img src="/icon-192.png" alt="" className="h-8 w-8 rounded-lg" />
+            <span className="font-bold">PantryAI</span>
+          </Link>
+          <h1 className="text-2xl font-bold">Controlla la tua email</h1>
+          <p className="mt-3 text-sm text-muted-foreground">
+            Ti abbiamo inviato un link di conferma a <strong>{sentEmail}</strong>.
+            Clicca il link per attivare l'account e continuare con la configurazione.
+          </p>
+          <Link to="/login" className="mt-6 inline-block text-sm text-primary underline">
+            Vai al login
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-10">

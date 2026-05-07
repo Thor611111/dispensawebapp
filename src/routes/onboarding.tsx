@@ -36,6 +36,7 @@ function OnboardingPage() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [householdId, setHouseholdId] = useState<string | null>(null);
+  const [hhError, setHhError] = useState<string | null>(null);
   const [size, setSize] = useState(2);
   const [diets, setDiets] = useState<string[]>([]);
   const [allergies, setAllergies] = useState("");
@@ -49,33 +50,51 @@ function OnboardingPage() {
       navigate({ to: "/login" });
       return;
     }
-    ensureHousehold(user.id).then(setHouseholdId).catch((e) => toast.error(e.message));
+    setHhError(null);
+    ensureHousehold(user.id)
+      .then(setHouseholdId)
+      .catch((e) => {
+        console.error("ensureHousehold failed", e);
+        setHhError(e?.message ?? "Errore inizializzazione");
+      });
   }, [loading, user, navigate]);
 
   const toggle = (arr: string[], v: string, set: (a: string[]) => void) =>
     set(arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
 
   const finish = async () => {
-    if (!householdId || !user) return;
+    if (!user) return;
     setSaving(true);
-    const { error } = await supabase
-      .from("user_preferences")
-      .upsert({
-        household_id: householdId,
-        household_size: size,
-        diets: diets as never,
-        allergies: allergies.split(",").map((s) => s.trim()).filter(Boolean),
-        goals,
-        weekly_budget: budget ? Number(budget) : null,
-      });
-    if (error) {
-      toast.error(error.message);
+    try {
+      let hid = householdId;
+      if (!hid) {
+        hid = await ensureHousehold(user.id);
+        setHouseholdId(hid);
+      }
+      const { error } = await supabase
+        .from("user_preferences")
+        .upsert({
+          household_id: hid,
+          household_size: size,
+          diets: diets as never,
+          allergies: allergies.split(",").map((s) => s.trim()).filter(Boolean),
+          goals,
+          weekly_budget: budget ? Number(budget) : null,
+        });
+      if (error) throw error;
+      const { error: pErr } = await supabase
+        .from("profiles")
+        .update({ onboarding_completed: true })
+        .eq("id", user.id);
+      if (pErr) throw pErr;
+      navigate({ to: "/dispensa" });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Errore salvataggio";
+      console.error("finish onboarding failed", e);
+      toast.error(msg);
+    } finally {
       setSaving(false);
-      return;
     }
-    await supabase.from("profiles").update({ onboarding_completed: true }).eq("id", user.id);
-    setSaving(false);
-    navigate({ to: "/dispensa" });
   };
 
   if (loading || !user) return <div className="p-8 text-center text-muted-foreground">Caricamento…</div>;
@@ -87,6 +106,23 @@ function OnboardingPage() {
           <div key={s} className={`h-1.5 flex-1 rounded-full ${s <= step ? "bg-primary" : "bg-muted"}`} />
         ))}
       </div>
+
+      {hhError && (
+        <div className="mb-4 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+          {hhError}{" "}
+          <button
+            className="underline"
+            onClick={() => {
+              setHhError(null);
+              ensureHousehold(user.id)
+                .then(setHouseholdId)
+                .catch((e) => setHhError(e?.message ?? "Errore"));
+            }}
+          >
+            Riprova
+          </button>
+        </div>
+      )}
 
       {step === 1 && (
         <div className="space-y-6">
@@ -169,7 +205,7 @@ function OnboardingPage() {
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setStep(3)} className="flex-1">Indietro</Button>
-            <Button onClick={finish} disabled={saving || !householdId} className="flex-1">
+            <Button onClick={finish} disabled={saving} className="flex-1">
               {saving ? "Salvataggio…" : "Inizia"}
             </Button>
           </div>
