@@ -43,6 +43,7 @@ function Impostazioni() {
   const [diets, setDiets] = useState<string[]>([]);
   const [allergies, setAllergies] = useState("");
   const [budget, setBudget] = useState("");
+  const [monthlyBudget, setMonthlyBudget] = useState("");
 
   useEffect(() => {
     if (prefs) {
@@ -50,6 +51,7 @@ function Impostazioni() {
       setDiets(prefs.diets ?? []);
       setAllergies((prefs.allergies ?? []).join(", "));
       setBudget(prefs.weekly_budget ? String(prefs.weekly_budget) : "");
+      setMonthlyBudget(prefs.monthly_budget ? String(prefs.monthly_budget) : "");
     }
   }, [prefs]);
 
@@ -61,6 +63,7 @@ function Impostazioni() {
       diets: diets as never,
       allergies: allergies.split(",").map((s) => s.trim()).filter(Boolean),
       weekly_budget: budget ? Number(budget) : null,
+      monthly_budget: monthlyBudget ? Number(monthlyBudget) : null,
     });
     if (error) return toast.error(error.message);
     await queryClient.invalidateQueries({ queryKey: ["prefs", hid] });
@@ -121,6 +124,10 @@ function Impostazioni() {
         <div className="space-y-2">
           <Label>Budget settimanale (€)</Label>
           <Input type="number" value={budget} onChange={(e) => setBudget(e.target.value)} />
+        </div>
+        <div className="space-y-2">
+          <Label>Budget mensile (€)</Label>
+          <Input type="number" value={monthlyBudget} onChange={(e) => setMonthlyBudget(e.target.value)} />
         </div>
         <Button className="w-full" onClick={save}>Salva preferenze</Button>
         <Button variant="outline" className="w-full" onClick={logout}><LogOut className="h-4 w-4" /> Esci</Button>

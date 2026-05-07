@@ -15,9 +15,16 @@ Deno.serve(async (req) => {
     if (filters.maxMinutes) filterLines.push(`- Tempo max: ${filters.maxMinutes} minuti`);
     if (filters.maxCost) filterLines.push(`- Costo max per ricetta: ${filters.maxCost} EUR`);
     if (filters.difficulty) filterLines.push(`- Difficoltà richiesta: ${filters.difficulty}`);
-    const ctx = `Dispensa attuale (con scadenze):\n${(foodItems ?? [])
-      .map((f: any) => `- ${f.name} (${f.quantity}${f.unit}${f.expires_on ? `, scade ${f.expires_on}` : ""})`)
-      .join("\n") || "(vuota)"}\n\nPreferenze:\n- Persone: ${preferences?.household_size ?? 2}\n- Diete: ${(preferences?.diets ?? []).join(", ") || "nessuna"}\n- Allergie: ${(preferences?.allergies ?? []).join(", ") || "nessuna"}\n- Obiettivi: ${(preferences?.goals ?? []).join(", ") || "—"}\n- Budget settimanale: ${preferences?.weekly_budget ?? "non impostato"} EUR\n- Ricette gradite (proponi simili): ${likes.join(", ") || "—"}\n- Ricette NON gradite (EVITA assolutamente piatti simili): ${dislikes.join(", ") || "—"}${filterLines.length ? `\n\nFiltri OBBLIGATORI:\n${filterLines.join("\n")}` : ""}`;
+    const now = Date.now();
+    const fmtFood = (f: any) => {
+      const lastUsed = f.last_used_at ? Math.round((now - new Date(f.last_used_at).getTime()) / 86400000) : null;
+      const tags: string[] = [];
+      if (f.expires_on) tags.push(`scade ${f.expires_on}`);
+      if (lastUsed !== null) tags.push(`usato ${lastUsed}g fa`);
+      else tags.push("mai usato");
+      return `- ${f.name} (${f.quantity}${f.unit}${tags.length ? `, ${tags.join(", ")}` : ""})`;
+    };
+    const ctx = `Dispensa attuale:\n${(foodItems ?? []).map(fmtFood).join("\n") || "(vuota)"}\n\nPreferenze:\n- Persone: ${preferences?.household_size ?? 2}\n- Diete: ${(preferences?.diets ?? []).join(", ") || "nessuna"}\n- Allergie: ${(preferences?.allergies ?? []).join(", ") || "nessuna"}\n- Obiettivi: ${(preferences?.goals ?? []).join(", ") || "—"}\n- Budget settimanale: ${preferences?.weekly_budget ?? "non impostato"} EUR\n- Ricette gradite (proponi simili): ${likes.join(", ") || "—"}\n- Ricette NON gradite (EVITA assolutamente piatti simili): ${dislikes.join(", ") || "—"}\n\nPriorità: prima gli alimenti in scadenza, poi quelli mai usati o non usati da tempo.${filterLines.length ? `\n\nFiltri OBBLIGATORI:\n${filterLines.join("\n")}` : ""}`;
 
     const body = {
       model: "google/gemini-3-flash-preview",

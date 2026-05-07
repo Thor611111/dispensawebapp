@@ -28,6 +28,8 @@ function Home() {
   const budget = prefs?.weekly_budget ? Number(prefs.weekly_budget) : 0;
   const remaining = budget - weekSpent;
   const pct = budget > 0 ? Math.min(100, (weekSpent / budget) * 100) : 0;
+  const mBudget = prefs?.monthly_budget ? Number(prefs.monthly_budget) : 0;
+  const mPct = mBudget > 0 ? Math.min(100, (monthSpent / mBudget) * 100) : 0;
   const expiring = items.filter((i) => { const d = daysUntil(i.expires_on); return d !== null && d <= 3; }).length;
 
   const monthLabel = today.toLocaleDateString("it-IT", { month: "long", year: "numeric" });
@@ -70,6 +72,12 @@ function Home() {
         <div className="rounded-xl border bg-card p-4">
           <p className="text-xs text-muted-foreground">Spesa del mese</p>
           <p className="mt-1 text-2xl font-bold">{monthSpent.toFixed(2)} €</p>
+          {mBudget > 0 && (
+            <>
+              <Progress value={mPct} className="mt-2" />
+              <p className="mt-1 text-[10px] text-muted-foreground">di {mBudget.toFixed(0)} €</p>
+            </>
+          )}
         </div>
         <div className="rounded-xl border bg-card p-4">
           <p className="text-xs text-muted-foreground">In scadenza ≤3g</p>
