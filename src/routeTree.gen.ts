@@ -18,6 +18,7 @@ import { Route as AppSpesaRouteImport } from './routes/_app/spesa'
 import { Route as AppRicetteRouteImport } from './routes/_app/ricette'
 import { Route as AppPianoRouteImport } from './routes/_app/piano'
 import { Route as AppImpostazioniRouteImport } from './routes/_app/impostazioni'
+import { Route as AppHomeRouteImport } from './routes/_app/home'
 import { Route as AppDispensaRouteImport } from './routes/_app/dispensa'
 import { Route as AppDispensaAggiungiRouteImport } from './routes/_app/dispensa.aggiungi'
 
@@ -65,6 +66,11 @@ const AppImpostazioniRoute = AppImpostazioniRouteImport.update({
   path: '/impostazioni',
   getParentRoute: () => AppRoute,
 } as any)
+const AppHomeRoute = AppHomeRouteImport.update({
+  id: '/home',
+  path: '/home',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppDispensaRoute = AppDispensaRouteImport.update({
   id: '/dispensa',
   path: '/dispensa',
@@ -82,6 +88,7 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof OnboardingRoute
   '/signup': typeof SignupRoute
   '/dispensa': typeof AppDispensaRouteWithChildren
+  '/home': typeof AppHomeRoute
   '/impostazioni': typeof AppImpostazioniRoute
   '/piano': typeof AppPianoRoute
   '/ricette': typeof AppRicetteRoute
@@ -94,6 +101,7 @@ export interface FileRoutesByTo {
   '/onboarding': typeof OnboardingRoute
   '/signup': typeof SignupRoute
   '/dispensa': typeof AppDispensaRouteWithChildren
+  '/home': typeof AppHomeRoute
   '/impostazioni': typeof AppImpostazioniRoute
   '/piano': typeof AppPianoRoute
   '/ricette': typeof AppRicetteRoute
@@ -108,6 +116,7 @@ export interface FileRoutesById {
   '/onboarding': typeof OnboardingRoute
   '/signup': typeof SignupRoute
   '/_app/dispensa': typeof AppDispensaRouteWithChildren
+  '/_app/home': typeof AppHomeRoute
   '/_app/impostazioni': typeof AppImpostazioniRoute
   '/_app/piano': typeof AppPianoRoute
   '/_app/ricette': typeof AppRicetteRoute
@@ -122,6 +131,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/signup'
     | '/dispensa'
+    | '/home'
     | '/impostazioni'
     | '/piano'
     | '/ricette'
@@ -134,6 +144,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/signup'
     | '/dispensa'
+    | '/home'
     | '/impostazioni'
     | '/piano'
     | '/ricette'
@@ -147,6 +158,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/signup'
     | '/_app/dispensa'
+    | '/_app/home'
     | '/_app/impostazioni'
     | '/_app/piano'
     | '/_app/ricette'
@@ -227,6 +239,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppImpostazioniRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/home': {
+      id: '/_app/home'
+      path: '/home'
+      fullPath: '/home'
+      preLoaderRoute: typeof AppHomeRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/dispensa': {
       id: '/_app/dispensa'
       path: '/dispensa'
@@ -258,6 +277,7 @@ const AppDispensaRouteWithChildren = AppDispensaRoute._addFileChildren(
 
 interface AppRouteChildren {
   AppDispensaRoute: typeof AppDispensaRouteWithChildren
+  AppHomeRoute: typeof AppHomeRoute
   AppImpostazioniRoute: typeof AppImpostazioniRoute
   AppPianoRoute: typeof AppPianoRoute
   AppRicetteRoute: typeof AppRicetteRoute
@@ -266,6 +286,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppDispensaRoute: AppDispensaRouteWithChildren,
+  AppHomeRoute: AppHomeRoute,
   AppImpostazioniRoute: AppImpostazioniRoute,
   AppPianoRoute: AppPianoRoute,
   AppRicetteRoute: AppRicetteRoute,
@@ -284,3 +305,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
