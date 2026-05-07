@@ -137,7 +137,7 @@ function Dispensa() {
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {it.quantity} {it.unit}
-                    {it.price ? ` · ${it.price.toFixed(2)} €` : ""}
+                    {it.price ? ` · ${Number(it.price).toFixed(2)} €` : ""}
                     {it.category ? ` · ${it.category}` : ""}
                     {it.kcal_per_unit ? ` · ~${Math.round(Number(it.kcal_per_unit) * Number(it.quantity))} kcal` : ""}
                   </p>

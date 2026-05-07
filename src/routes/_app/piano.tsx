@@ -108,6 +108,7 @@ function Piano() {
                 <div key={e.id} className="border-t py-2 first:border-0 first:pt-0">
                   <p className="text-xs uppercase text-muted-foreground">{e.slot === "lunch" ? "Pranzo" : e.slot === "dinner" ? "Cena" : e.slot}</p>
                   <p className="text-sm font-medium">{e.recipe_title_snapshot}</p>
+                  {e.notes && <p className="mt-0.5 text-xs text-primary">💡 {e.notes}</p>}
                 </div>
               ))}
             </div>
