@@ -9,38 +9,189 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SignupRouteImport } from './routes/signup'
+import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppSpesaRouteImport } from './routes/_app/spesa'
+import { Route as AppRicetteRouteImport } from './routes/_app/ricette'
+import { Route as AppPianoRouteImport } from './routes/_app/piano'
+import { Route as AppImpostazioniRouteImport } from './routes/_app/impostazioni'
+import { Route as AppDispensaRouteImport } from './routes/_app/dispensa'
+import { Route as AppDispensaAggiungiRouteImport } from './routes/_app/dispensa.aggiungi'
 
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppRoute = AppRouteImport.update({
+  id: '/_app',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppSpesaRoute = AppSpesaRouteImport.update({
+  id: '/spesa',
+  path: '/spesa',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppRicetteRoute = AppRicetteRouteImport.update({
+  id: '/ricette',
+  path: '/ricette',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPianoRoute = AppPianoRouteImport.update({
+  id: '/piano',
+  path: '/piano',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppImpostazioniRoute = AppImpostazioniRouteImport.update({
+  id: '/impostazioni',
+  path: '/impostazioni',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDispensaRoute = AppDispensaRouteImport.update({
+  id: '/dispensa',
+  path: '/dispensa',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDispensaAggiungiRoute = AppDispensaAggiungiRouteImport.update({
+  id: '/aggiungi',
+  path: '/aggiungi',
+  getParentRoute: () => AppDispensaRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/onboarding': typeof OnboardingRoute
+  '/signup': typeof SignupRoute
+  '/dispensa': typeof AppDispensaRouteWithChildren
+  '/impostazioni': typeof AppImpostazioniRoute
+  '/piano': typeof AppPianoRoute
+  '/ricette': typeof AppRicetteRoute
+  '/spesa': typeof AppSpesaRoute
+  '/dispensa/aggiungi': typeof AppDispensaAggiungiRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/onboarding': typeof OnboardingRoute
+  '/signup': typeof SignupRoute
+  '/dispensa': typeof AppDispensaRouteWithChildren
+  '/impostazioni': typeof AppImpostazioniRoute
+  '/piano': typeof AppPianoRoute
+  '/ricette': typeof AppRicetteRoute
+  '/spesa': typeof AppSpesaRoute
+  '/dispensa/aggiungi': typeof AppDispensaAggiungiRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_app': typeof AppRouteWithChildren
+  '/login': typeof LoginRoute
+  '/onboarding': typeof OnboardingRoute
+  '/signup': typeof SignupRoute
+  '/_app/dispensa': typeof AppDispensaRouteWithChildren
+  '/_app/impostazioni': typeof AppImpostazioniRoute
+  '/_app/piano': typeof AppPianoRoute
+  '/_app/ricette': typeof AppRicetteRoute
+  '/_app/spesa': typeof AppSpesaRoute
+  '/_app/dispensa/aggiungi': typeof AppDispensaAggiungiRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/onboarding'
+    | '/signup'
+    | '/dispensa'
+    | '/impostazioni'
+    | '/piano'
+    | '/ricette'
+    | '/spesa'
+    | '/dispensa/aggiungi'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/login'
+    | '/onboarding'
+    | '/signup'
+    | '/dispensa'
+    | '/impostazioni'
+    | '/piano'
+    | '/ricette'
+    | '/spesa'
+    | '/dispensa/aggiungi'
+  id:
+    | '__root__'
+    | '/'
+    | '/_app'
+    | '/login'
+    | '/onboarding'
+    | '/signup'
+    | '/_app/dispensa'
+    | '/_app/impostazioni'
+    | '/_app/piano'
+    | '/_app/ricette'
+    | '/_app/spesa'
+    | '/_app/dispensa/aggiungi'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AppRoute: typeof AppRouteWithChildren
+  LoginRoute: typeof LoginRoute
+  OnboardingRoute: typeof OnboardingRoute
+  SignupRoute: typeof SignupRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,22 +199,88 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/spesa': {
+      id: '/_app/spesa'
+      path: '/spesa'
+      fullPath: '/spesa'
+      preLoaderRoute: typeof AppSpesaRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/ricette': {
+      id: '/_app/ricette'
+      path: '/ricette'
+      fullPath: '/ricette'
+      preLoaderRoute: typeof AppRicetteRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/piano': {
+      id: '/_app/piano'
+      path: '/piano'
+      fullPath: '/piano'
+      preLoaderRoute: typeof AppPianoRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/impostazioni': {
+      id: '/_app/impostazioni'
+      path: '/impostazioni'
+      fullPath: '/impostazioni'
+      preLoaderRoute: typeof AppImpostazioniRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/dispensa': {
+      id: '/_app/dispensa'
+      path: '/dispensa'
+      fullPath: '/dispensa'
+      preLoaderRoute: typeof AppDispensaRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/dispensa/aggiungi': {
+      id: '/_app/dispensa/aggiungi'
+      path: '/aggiungi'
+      fullPath: '/dispensa/aggiungi'
+      preLoaderRoute: typeof AppDispensaAggiungiRouteImport
+      parentRoute: typeof AppDispensaRoute
+    }
   }
 }
 
+interface AppDispensaRouteChildren {
+  AppDispensaAggiungiRoute: typeof AppDispensaAggiungiRoute
+}
+
+const AppDispensaRouteChildren: AppDispensaRouteChildren = {
+  AppDispensaAggiungiRoute: AppDispensaAggiungiRoute,
+}
+
+const AppDispensaRouteWithChildren = AppDispensaRoute._addFileChildren(
+  AppDispensaRouteChildren,
+)
+
+interface AppRouteChildren {
+  AppDispensaRoute: typeof AppDispensaRouteWithChildren
+  AppImpostazioniRoute: typeof AppImpostazioniRoute
+  AppPianoRoute: typeof AppPianoRoute
+  AppRicetteRoute: typeof AppRicetteRoute
+  AppSpesaRoute: typeof AppSpesaRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppDispensaRoute: AppDispensaRouteWithChildren,
+  AppImpostazioniRoute: AppImpostazioniRoute,
+  AppPianoRoute: AppPianoRoute,
+  AppRicetteRoute: AppRicetteRoute,
+  AppSpesaRoute: AppSpesaRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AppRoute: AppRouteWithChildren,
+  LoginRoute: LoginRoute,
+  OnboardingRoute: OnboardingRoute,
+  SignupRoute: SignupRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
