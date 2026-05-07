@@ -1,118 +1,78 @@
+## Sintesi
 
-# Piano di estensione PantryAI
+Combiniamo la richiesta corrente (acquisto articoli → dispensa giusta + scalo budget + scontrino) con le funzionalità mancanti rispetto alla visione dell'app. Procediamo a ondate piccole e testabili, partendo dal flusso spesa→dispensa→budget che è il blocco più richiesto.
 
-Espansione completa dell'app con dashboard, gestione ricette migliorata, multi-dispense, kcal e altre funzioni richieste.
+## Stato attuale (cosa c'è già)
 
-## 1. Modifiche al database (migration)
+✅ Dispensa multipla, kcal AI, scadenze, posizioni  
+✅ Lista spesa, suggerimenti AI prodotti, recommended_products  
+✅ Ricette suggerite/salvate/personalizzate, like/dislike, tempi prep  
+✅ Piano pasti settimanale  
+✅ Home con budget settimanale, spesa mese, ricette rapide  
+✅ Preferenze: diete, allergie, dislikes, obiettivi, budget, household_size  
+✅ Multi-utente per household
 
-Nuova migration che aggiunge:
+## Cosa manca / da migliorare (prioritizzato)
 
-- `food_items.kcal_per_unit numeric` — kcal calcolate dall'AI per ogni alimento
-- `food_items.pantry_id uuid` — riferimento alla dispensa specifica (multi-dispense)
-- Nuova tabella `pantries` (id, household_id, name, icon, created_at) con RLS basato su `is_household_member` — permette di gestire più dispense (es. "Casa", "Ufficio", "Mamma")
-- `recipes` già esiste: aggiungiamo `is_favorite boolean default false` e `tags text[]`
-- `recipe_feedback` già esiste ma `recipe_id` referenzia ricette non sempre salvate; aggiungiamo `recipe_title text` per feedback su ricette AI non ancora salvate
-- Nuova tabella `recommended_products` (id, household_id, name, category, reason, created_at) generata dall'AI come suggerimenti spesa
+### 🔴 ONDATA 1 — Flusso acquisto + budget (richiesta esplicita)
 
-## 2. Nuova home dashboard `/home`
+**`src/routes/_app/spesa.tsx`**
+- Selettore **Dispensa di destinazione** in cima.
+- Bottone **"Acquistato"** per singolo articolo → dialog con prezzo + quantità reale → inserisce in `food_items` (con `pantry_id` scelto) + crea riga `expenses` → rimuove dalla lista. Budget Home si scala automaticamente.
+- Bottone in fondo **"Chiudi spesa"** con due modalità:
+  - **Totale manuale**: inserisci importo scontrino → tutti gli spuntati vanno in dispensa, una sola `expenses`.
+  - **📷 Foto scontrino (AI)**: upload foto → edge function `ai-scan-receipt` (Lovable AI vision Gemini) restituisce `{items:[{name,price,quantity}], total}`. Match per nome con articoli spuntati, gli sconosciuti vengono aggiunti come nuovi alimenti. Crea una sola `expenses` col totale.
 
-Creo `src/routes/_app/home.tsx` come tab principale. Contiene:
+**Nuova edge function** `supabase/functions/ai-scan-receipt/index.ts` — vision con `google/gemini-2.5-flash`, input `{imageBase64}`, output JSON strutturato.
 
-- Saldo budget settimanale: `weekly_budget - spesa settimana corrente` con barra di progresso
-- Totale spesa mese corrente
-- Data corrente (mese/anno)
-- 2 ricette rapide generate dall'AI in base alla dispensa (cache giornaliera in `localStorage` per non bruciare crediti AI)
-- Counter alimenti in scadenza (entro 3 giorni)
-- Link rapidi a Dispensa / Ricette / Spesa
+### 🟡 ONDATA 2 — Scansione codici a barre + import ricette da link
 
-Aggiungo "Home" come prima tab in `AppShell` (icona Home). Cambio redirect post-login a `/home`.
+**Barcode scanner in `dispensa.aggiungi.tsx`**
+- Tab nuovo **"📷 Codice a barre"** usando `@zxing/browser` (Web API `getUserMedia`, funziona su mobile web e PWA).
+- Lookup prodotto via **Open Food Facts API** (gratis, no key): `https://world.openfoodfacts.org/api/v2/product/{barcode}.json` → precompila nome, categoria, kcal, marca.
+- Fallback: se non trovato, l'utente compila a mano col nome già letto.
 
-## 3. Sezione Ricette: salvate, personalizzate, like/dislike funzionanti
+**Import ricetta da URL in `ricette.nuova.tsx`**
+- Tab **"🔗 Da link"** → nuova edge function `ai-import-recipe` che fa `fetch(url)`, estrae HTML e chiede a Gemini di strutturare titolo, ingredienti, istruzioni, tempo, costo stimato.
 
-Refactor `src/routes/_app/ricette.tsx`:
+### 🟢 ONDATA 3 — Intelligenza adattiva + spiegazioni
 
-- Tabs: **Suggerite (AI)** | **Salvate** | **Mie ricette**
-- Per ogni ricetta AI: pulsante "Salva" che inserisce in `recipes` + `recipe_ingredients` con `household_id`
-- **Like/Dislike funzionanti**: salva in `recipe_feedback` usando `recipe_title` come chiave quando la ricetta non è ancora salvata, altrimenti `recipe_id`. Lo stato persiste e l'AI userà il contesto (dislikes/likes) nei prompt successivi
-- Tab "Mie ricette": form per creare ricetta personalizzata (titolo, ingredienti, istruzioni, tempo prep, kcal, difficoltà)
-- Mostro **tempo di preparazione in evidenza** sulle card (era già nel JSON, ora messo come badge prominente con icona ⏱️)
+**Apprendimento abitudini**
+- Tracciare `recipe_feedback` (già presente) e `food_items` consumati per migliorare i suggerimenti — già parzialmente fatto. Estendere `ai-suggest-recipes` per pesare gli ingredienti **realmente usati spesso** (calcolato dai consumi storici).
+- Aggiungere campo `last_used_at` su `food_items` (migration) e aggiornarlo quando un alimento viene rimosso/finito.
 
-Aggiorno `ai-suggest-recipes` edge function: passa nel system prompt anche feedback (like/dislike) dell'utente per migliorare i suggerimenti.
+**Spiegazioni "perché"**
+- Le ricette AI hanno già `reason`. Estendere anche al **piano pasti settimanale**: ogni entry mostra una badge "💡 perché" con motivo (es. "usa yogurt in scadenza", "rispetta budget").
 
-## 4. Dispensa multi-pantry + kcal + svuota
+**Filtri ricette**
+- Aggiungere filtri rapidi sopra la lista ricette: **tempo max** (15/30/60 min), **costo max**, **difficoltà**. Già abbiamo i campi nel DB.
 
-Refactor `src/routes/_app/dispensa.tsx`:
+### 🔵 ONDATA 4 — Budget mensile + monitoraggio nel tempo
 
-- Selettore dispense in alto (chip "Casa", "+ Nuova dispensa")
-- Modale per creare nuova dispensa (nome + icona)
-- Tasto "Svuota dispensa" (con conferma `AlertDialog`) che cancella tutti gli alimenti della dispensa attiva
-- Mostra kcal stimate per ogni alimento e totale kcal in cima
+- Aggiungere campo `monthly_budget` a `user_preferences` (migration).
+- In `impostazioni.tsx`: input per budget mensile.
+- In Home: progress bar per budget mensile sotto quello settimanale.
+- Nuova sezione **"Andamento spesa"** in Home o pagina dedicata `/statistiche` con grafico ultime 8 settimane (recharts già installato).
 
-Refactor `dispensa.aggiungi.tsx`:
+### ⚪ ONDATA 5 — Refinements UX
 
-- Aggiungo campo "Dispensa" (select)
-- Aggiungo campo "Kcal per unità" (auto-calcolato dall'AI in `ai-parse-food`, modificabile)
-- Bottone "Calcola kcal con AI" per alimenti aggiunti manualmente
+- Suggerimenti precompilati nelle dispense (es. "hai poca pasta?" se quantità < soglia).
+- Notifiche in-app per scadenze imminenti (badge sul tab Dispensa).
+- PWA: verificare manifest e installabilità su iOS/Android (già abbiamo `public/manifest.webmanifest`).
 
-Aggiorno `ai-parse-food`: schema include `kcal_per_unit` (stima per unità).
+## Cosa NON faremo
 
-Nuova edge function `ai-calc-kcal` per calcolo singolo (input: nome+quantità+unità → kcal).
+- App nativa iOS/Android: la PWA copre tutti i target richiesti senza store. Lo segnaliamo come scelta architetturale.
+- Sync multi-dispositivo: già garantita da Lovable Cloud (Supabase) — nessun lavoro extra.
 
-## 5. Suggerimenti prodotti (recommended_products)
+## Database — migrations necessarie
 
-Nuova sezione in `/spesa`:
+Solo 2 piccole:
+1. `food_items.last_used_at TIMESTAMPTZ NULL` (per ondata 3).
+2. `user_preferences.monthly_budget NUMERIC NULL` (per ondata 4).
 
-- Card "Consigliati per te" sopra la lista, generati dall'AI in base a:
-  - alimenti in scadenza
-  - storico spesa
-  - preferenze diete
-- Bottone "Aggiungi alla lista" per ognuno
-- Bottone "Rigenera suggerimenti" (chiama nuova edge function `ai-suggest-products`)
+Nessuna nuova tabella.
 
-Nuova edge function `ai-suggest-products` (analoga a `ai-suggest-recipes` ma genera 5–8 prodotti consigliati con `name`, `category`, `reason`).
+## Ordine di esecuzione proposto
 
-## 6. Counter spesa effettuata e budget rimanente (mini-dashboard nelle altre pagine)
-
-In `/spesa`: card in alto con
-- Spesa settimana: X €
-- Budget settimanale: Y €
-- Rimanente: Y - X € (verde se positivo, rosso se negativo)
-- Barra progresso
-
-## 7. Fix piano settimanale
-
-Includo `prep_minutes` e `estimated_cost` negli `meal_plan_entries.notes` per mostrarli nel piano.
-
-## Dettagli tecnici
-
-```text
-src/
-├── routes/_app/
-│   ├── home.tsx                ← NUOVO (dashboard)
-│   ├── dispensa.tsx            ← multi-pantry, kcal, svuota
-│   ├── dispensa.aggiungi.tsx   ← campo dispensa + kcal
-│   ├── ricette.tsx             ← tabs salvate/personalizzate, fix like
-│   ├── ricette.nuova.tsx       ← NUOVO (form ricetta personalizzata)
-│   ├── spesa.tsx               ← suggeriti AI + dashboard budget
-│   └── ...
-├── components/
-│   ├── AppShell.tsx            ← aggiunta tab Home
-│   └── BudgetCard.tsx          ← NUOVO (riusabile)
-└── lib/queries.ts              ← hooks pantries, savedRecipes, recommendedProducts
-
-supabase/
-├── migrations/                 ← nuova migration (pantries, kcal, tags, recommended_products)
-└── functions/
-    ├── ai-suggest-recipes/     ← passa feedback nel prompt
-    ├── ai-parse-food/          ← restituisce kcal_per_unit
-    ├── ai-calc-kcal/           ← NUOVA
-    └── ai-suggest-products/    ← NUOVA
-```
-
-Tutti i nuovi RLS usano `is_household_member`. Gli aggiornamenti UI invalidano le query React-Query corrispondenti.
-
-## Note
-
-- Le ricette AI non vengono salvate finché l'utente non clicca "Salva" — risparmio storage
-- Le 2 ricette rapide in home sono cachate per 24h in `localStorage` per evitare di bruciare crediti AI ad ogni apertura
-- Il calcolo kcal è una **stima AI**, mostro un piccolo "~" davanti
+Ti chiedo di confermare se vuoi che parta **subito con l'Ondata 1** (la richiesta esplicita di oggi: acquisto + scontrino + scalo budget) e poi proseguire con le successive una alla volta, oppure se preferisci che faccia tutto insieme in un'unica grande modifica. La modalità incrementale è più sicura e ti permette di testare ogni step.
