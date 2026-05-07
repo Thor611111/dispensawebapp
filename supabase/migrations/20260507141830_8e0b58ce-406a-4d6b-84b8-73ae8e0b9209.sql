@@ -1,0 +1,2 @@
+GRANT EXECUTE ON FUNCTION public.is_household_member(uuid, uuid) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.is_household_owner(uuid, uuid) TO anon, authenticated, service_role;

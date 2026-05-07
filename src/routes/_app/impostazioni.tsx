@@ -9,7 +9,18 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { LogOut } from "lucide-react";
+import { LogOut, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/_app/impostazioni")({ component: Impostazioni });
 
@@ -64,6 +75,14 @@ function Impostazioni() {
     nav({ to: "/" });
   };
 
+  const deleteAccount = async () => {
+    const { error } = await supabase.functions.invoke("delete-account");
+    if (error) return toast.error(error.message);
+    await signOut();
+    toast.success("Account eliminato");
+    nav({ to: "/" });
+  };
+
   return (
     <div>
       <PageHeader title="Profilo" subtitle={user?.email ?? ""} />
@@ -102,6 +121,23 @@ function Impostazioni() {
         </div>
         <Button className="w-full" onClick={save}>Salva preferenze</Button>
         <Button variant="outline" className="w-full" onClick={logout}><LogOut className="h-4 w-4" /> Esci</Button>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="destructive" className="w-full"><Trash2 className="h-4 w-4" /> Elimina account</Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Eliminare definitivamente l'account?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Questa azione è irreversibile. Tutti i tuoi dati (dispensa, spesa, piani, preferenze) verranno eliminati per sempre.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Annulla</AlertDialogCancel>
+              <AlertDialogAction onClick={deleteAccount}>Elimina per sempre</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );
