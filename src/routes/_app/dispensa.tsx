@@ -1,13 +1,19 @@
 import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useHouseholdId, useFoodItems, daysUntil } from "@/lib/queries";
+import { useHouseholdId, useFoodItems, usePantries, daysUntil } from "@/lib/queries";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Refrigerator, Snowflake, Package2, Box } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Plus, Trash2, Refrigerator, Snowflake, Package2, Box, Trash, Flame } from "lucide-react";
 import { toast } from "sonner";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/_app/dispensa")({ component: Dispensa });
 
@@ -22,12 +28,18 @@ function Dispensa() {
   const location = useLocation();
   const { data: hid } = useHouseholdId();
   const { data: items = [], isLoading } = useFoodItems(hid);
+  const { data: pantries = [] } = usePantries(hid);
   const qc = useQueryClient();
   const [filter, setFilter] = useState<string>("all");
+  const [activePantry, setActivePantry] = useState<string>("all");
+  const [newPantryName, setNewPantryName] = useState("");
+  const [openPantryDialog, setOpenPantryDialog] = useState(false);
 
   if (location.pathname !== "/dispensa") return <Outlet />;
 
-  const filtered = filter === "all" ? items : items.filter((i) => i.location === filter);
+  const byPantry = activePantry === "all" ? items : items.filter((i) => (i.pantry_id ?? "default") === activePantry);
+  const filtered = filter === "all" ? byPantry : byPantry.filter((i) => i.location === filter);
+  const totalKcal = filtered.reduce((s, i) => s + (Number(i.kcal_per_unit ?? 0) * Number(i.quantity ?? 0)), 0);
 
   const remove = async (id: string) => {
     const { error } = await supabase.from("food_items").delete().eq("id", id);
@@ -35,17 +47,56 @@ function Dispensa() {
     qc.invalidateQueries({ queryKey: ["food", hid] });
   };
 
+  const empty = async () => {
+    if (!hid) return;
+    let q = supabase.from("food_items").delete().eq("household_id", hid);
+    if (activePantry !== "all") q = q.eq("pantry_id", activePantry);
+    const { error } = await q;
+    if (error) return toast.error(error.message);
+    qc.invalidateQueries({ queryKey: ["food", hid] });
+    toast.success("Dispensa svuotata");
+  };
+
+  const createPantry = async () => {
+    if (!hid || !newPantryName.trim()) return;
+    const { error } = await supabase.from("pantries").insert({ household_id: hid, name: newPantryName.trim() });
+    if (error) return toast.error(error.message);
+    setNewPantryName("");
+    setOpenPantryDialog(false);
+    qc.invalidateQueries({ queryKey: ["pantries", hid] });
+    toast.success("Dispensa creata");
+  };
+
   return (
     <div>
       <PageHeader
         title="Dispensa"
-        subtitle="Cosa hai in casa, sempre aggiornato."
+        subtitle={totalKcal > 0 ? `${filtered.length} alimenti · ~${Math.round(totalKcal)} kcal totali` : "Cosa hai in casa, sempre aggiornato."}
         right={
           <Button asChild size="sm">
             <Link to="/dispensa/aggiungi"><Plus className="h-4 w-4" /> Aggiungi</Link>
           </Button>
         }
       />
+
+      {pantries.length > 0 && (
+        <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
+          <Button size="sm" variant={activePantry === "all" ? "default" : "outline"} onClick={() => setActivePantry("all")}>Tutte</Button>
+          {pantries.map((p) => (
+            <Button key={p.id} size="sm" variant={activePantry === p.id ? "default" : "outline"} onClick={() => setActivePantry(p.id)}>{p.name}</Button>
+          ))}
+          <Dialog open={openPantryDialog} onOpenChange={setOpenPantryDialog}>
+            <DialogTrigger asChild>
+              <Button size="sm" variant="ghost"><Plus className="h-4 w-4" /></Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Nuova dispensa</DialogTitle></DialogHeader>
+              <Input value={newPantryName} onChange={(e) => setNewPantryName(e.target.value)} placeholder="es. Ufficio, Casa al mare…" />
+              <DialogFooter><Button onClick={createPantry}>Crea</Button></DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+      )}
 
       <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
         {LOCS.map((l) => (
@@ -88,6 +139,7 @@ function Dispensa() {
                     {it.quantity} {it.unit}
                     {it.price ? ` · ${it.price.toFixed(2)} €` : ""}
                     {it.category ? ` · ${it.category}` : ""}
+                    {it.kcal_per_unit ? ` · ~${Math.round(Number(it.kcal_per_unit) * Number(it.quantity))} kcal` : ""}
                   </p>
                 </div>
                 <Button size="icon" variant="ghost" onClick={() => remove(it.id)}>
@@ -97,6 +149,24 @@ function Dispensa() {
             );
           })}
         </ul>
+      )}
+
+      {filtered.length > 0 && (
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="outline" className="mt-6 w-full"><Trash className="h-4 w-4" /> Svuota dispensa{activePantry !== "all" ? " selezionata" : ""}</Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Svuotare la dispensa?</AlertDialogTitle>
+              <AlertDialogDescription>Verranno eliminati {filtered.length} alimenti. Azione irreversibile.</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Annulla</AlertDialogCancel>
+              <AlertDialogAction onClick={empty}>Svuota</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
     </div>
   );
