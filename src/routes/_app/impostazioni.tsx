@@ -48,7 +48,7 @@ function Impostazioni() {
       diets: diets as never,
       allergies: allergies.split(",").map((s) => s.trim()).filter(Boolean),
       weekly_budget: budget ? Number(budget) : null,
-    }).eq("household_id", hid);
+    });
     if (error) return toast.error(error.message);
     toast.success("Salvato");
   };
