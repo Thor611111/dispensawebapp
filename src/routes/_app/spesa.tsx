@@ -59,7 +59,7 @@ function Spesa() {
     const exp = info.shelf_life_days ? new Date(today.getTime() + info.shelf_life_days * 86400000).toISOString().slice(0, 10) : null;
     return {
       ...row,
-      location: (info.location ?? row.location ?? "pantry") as const,
+      location: (info.location ?? row.location ?? "pantry"),
       category: info.category ?? row.category ?? null,
       kcal_per_unit: info.kcal_per_unit ?? row.kcal_per_unit ?? null,
       expires_on: row.expires_on ?? exp,
