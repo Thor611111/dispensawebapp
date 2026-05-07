@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useHouseholdId, useFoodItems, daysUntil } from "@/lib/queries";
@@ -19,10 +19,13 @@ const LOCS = [
 ] as const;
 
 function Dispensa() {
+  const location = useLocation();
   const { data: hid } = useHouseholdId();
   const { data: items = [], isLoading } = useFoodItems(hid);
   const qc = useQueryClient();
   const [filter, setFilter] = useState<string>("all");
+
+  if (location.pathname !== "/dispensa") return <Outlet />;
 
   const filtered = filter === "all" ? items : items.filter((i) => i.location === filter);
 
