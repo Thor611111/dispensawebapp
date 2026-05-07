@@ -8,7 +8,9 @@ import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Sparkles, Loader2, Clock, Wallet, ThumbsDown, ThumbsUp, Heart, Plus, Trash2, BookmarkPlus } from "lucide-react";
+import { Sparkles, Loader2, Clock, Wallet, ThumbsDown, ThumbsUp, Heart, Plus, Trash2, BookmarkPlus, SlidersHorizontal } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/ricette")({ component: Ricette });
@@ -26,6 +28,10 @@ function Ricette() {
   const qc = useQueryClient();
   const [loading, setLoading] = useState(false);
   const [recipes, setRecipes] = useState<R[]>([]);
+  const [showFilters, setShowFilters] = useState(false);
+  const [maxMinutes, setMaxMinutes] = useState("");
+  const [maxCost, setMaxCost] = useState("");
+  const [difficulty, setDifficulty] = useState("");
 
   if (location.pathname !== "/ricette") return <Outlet />;
 
@@ -35,7 +41,11 @@ function Ricette() {
 
   const generate = async () => {
     setLoading(true);
-    const { data, error } = await supabase.functions.invoke("ai-suggest-recipes", { body: { foodItems: items, preferences: prefs, count: 5, likes, dislikes } });
+    const filters: Record<string, unknown> = {};
+    if (maxMinutes) filters.maxMinutes = Number(maxMinutes);
+    if (maxCost) filters.maxCost = Number(maxCost);
+    if (difficulty) filters.difficulty = difficulty;
+    const { data, error } = await supabase.functions.invoke("ai-suggest-recipes", { body: { foodItems: items, preferences: prefs, count: 5, likes, dislikes, filters } });
     setLoading(false);
     if (error) return toast.error(error.message);
     if (data?.error) return toast.error(data.error);
@@ -109,9 +119,38 @@ function Ricette() {
         </TabsList>
 
         <TabsContent value="ai" className="space-y-3">
-          <Button size="sm" onClick={generate} disabled={loading} className="w-full">
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} Suggerisci ricette
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={generate} disabled={loading} className="flex-1">
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} Suggerisci ricette
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setShowFilters((v) => !v)}>
+              <SlidersHorizontal className="h-4 w-4" />
+            </Button>
+          </div>
+          {showFilters && (
+            <div className="grid grid-cols-3 gap-2 rounded-xl border bg-card p-3">
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Max min</label>
+                <Input type="number" value={maxMinutes} onChange={(e) => setMaxMinutes(e.target.value)} placeholder="30" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Max € </label>
+                <Input type="number" step="0.5" value={maxCost} onChange={(e) => setMaxCost(e.target.value)} placeholder="8" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Difficoltà</label>
+                <Select value={difficulty || "any"} onValueChange={(v) => setDifficulty(v === "any" ? "" : v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="any">Qualsiasi</SelectItem>
+                    <SelectItem value="facile">Facile</SelectItem>
+                    <SelectItem value="media">Media</SelectItem>
+                    <SelectItem value="difficile">Difficile</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
           {recipes.length === 0 && !loading && (
             <div className="rounded-2xl border border-dashed p-10 text-center">
               <p className="text-muted-foreground">Tocca "Suggerisci" per ricevere ricette su misura.</p>

@@ -7,13 +7,17 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
 
   try {
-    const { foodItems, preferences, count = 5, likes = [], dislikes = [] } = await req.json();
+    const { foodItems, preferences, count = 5, likes = [], dislikes = [], filters = {} } = await req.json();
     const apiKey = Deno.env.get("LOVABLE_API_KEY");
     if (!apiKey) throw new Error("LOVABLE_API_KEY missing");
 
+    const filterLines: string[] = [];
+    if (filters.maxMinutes) filterLines.push(`- Tempo max: ${filters.maxMinutes} minuti`);
+    if (filters.maxCost) filterLines.push(`- Costo max per ricetta: ${filters.maxCost} EUR`);
+    if (filters.difficulty) filterLines.push(`- Difficoltà richiesta: ${filters.difficulty}`);
     const ctx = `Dispensa attuale (con scadenze):\n${(foodItems ?? [])
       .map((f: any) => `- ${f.name} (${f.quantity}${f.unit}${f.expires_on ? `, scade ${f.expires_on}` : ""})`)
-      .join("\n") || "(vuota)"}\n\nPreferenze:\n- Persone: ${preferences?.household_size ?? 2}\n- Diete: ${(preferences?.diets ?? []).join(", ") || "nessuna"}\n- Allergie: ${(preferences?.allergies ?? []).join(", ") || "nessuna"}\n- Obiettivi: ${(preferences?.goals ?? []).join(", ") || "—"}\n- Budget settimanale: ${preferences?.weekly_budget ?? "non impostato"} EUR\n- Ricette gradite (proponi simili): ${likes.join(", ") || "—"}\n- Ricette NON gradite (EVITA assolutamente piatti simili): ${dislikes.join(", ") || "—"}`;
+      .join("\n") || "(vuota)"}\n\nPreferenze:\n- Persone: ${preferences?.household_size ?? 2}\n- Diete: ${(preferences?.diets ?? []).join(", ") || "nessuna"}\n- Allergie: ${(preferences?.allergies ?? []).join(", ") || "nessuna"}\n- Obiettivi: ${(preferences?.goals ?? []).join(", ") || "—"}\n- Budget settimanale: ${preferences?.weekly_budget ?? "non impostato"} EUR\n- Ricette gradite (proponi simili): ${likes.join(", ") || "—"}\n- Ricette NON gradite (EVITA assolutamente piatti simili): ${dislikes.join(", ") || "—"}${filterLines.length ? `\n\nFiltri OBBLIGATORI:\n${filterLines.join("\n")}` : ""}`;
 
     const body = {
       model: "google/gemini-3-flash-preview",
