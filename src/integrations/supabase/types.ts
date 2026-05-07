@@ -60,8 +60,10 @@ export type Database = {
           expires_on: string | null
           household_id: string
           id: string
+          kcal_per_unit: number | null
           location: Database["public"]["Enums"]["food_location"]
           name: string
+          pantry_id: string | null
           price: number | null
           quantity: number
           unit: string
@@ -74,8 +76,10 @@ export type Database = {
           expires_on?: string | null
           household_id: string
           id?: string
+          kcal_per_unit?: number | null
           location?: Database["public"]["Enums"]["food_location"]
           name: string
+          pantry_id?: string | null
           price?: number | null
           quantity?: number
           unit?: string
@@ -88,8 +92,10 @@ export type Database = {
           expires_on?: string | null
           household_id?: string
           id?: string
+          kcal_per_unit?: number | null
           location?: Database["public"]["Enums"]["food_location"]
           name?: string
+          pantry_id?: string | null
           price?: number | null
           quantity?: number
           unit?: string
@@ -273,6 +279,30 @@ export type Database = {
           },
         ]
       }
+      pantries: {
+        Row: {
+          created_at: string
+          household_id: string
+          icon: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          household_id: string
+          icon?: string
+          id?: string
+          name?: string
+        }
+        Update: {
+          created_at?: string
+          household_id?: string
+          icon?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -304,19 +334,25 @@ export type Database = {
         Row: {
           created_at: string
           feedback: Database["public"]["Enums"]["feedback_type"]
-          recipe_id: string
+          id: string
+          recipe_id: string | null
+          recipe_title: string | null
           user_id: string
         }
         Insert: {
           created_at?: string
           feedback: Database["public"]["Enums"]["feedback_type"]
-          recipe_id: string
+          id?: string
+          recipe_id?: string | null
+          recipe_title?: string | null
           user_id: string
         }
         Update: {
           created_at?: string
           feedback?: Database["public"]["Enums"]["feedback_type"]
-          recipe_id?: string
+          id?: string
+          recipe_id?: string | null
+          recipe_title?: string | null
           user_id?: string
         }
         Relationships: [
@@ -373,10 +409,12 @@ export type Database = {
           id: string
           image_url: string | null
           instructions: string | null
+          is_favorite: boolean
           is_system: boolean
           prep_minutes: number | null
           servings: number
           source_url: string | null
+          tags: string[]
           title: string
         }
         Insert: {
@@ -390,10 +428,12 @@ export type Database = {
           id?: string
           image_url?: string | null
           instructions?: string | null
+          is_favorite?: boolean
           is_system?: boolean
           prep_minutes?: number | null
           servings?: number
           source_url?: string | null
+          tags?: string[]
           title: string
         }
         Update: {
@@ -407,10 +447,12 @@ export type Database = {
           id?: string
           image_url?: string | null
           instructions?: string | null
+          is_favorite?: boolean
           is_system?: boolean
           prep_minutes?: number | null
           servings?: number
           source_url?: string | null
+          tags?: string[]
           title?: string
         }
         Relationships: [
@@ -422,6 +464,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      recommended_products: {
+        Row: {
+          category: string | null
+          created_at: string
+          household_id: string
+          id: string
+          name: string
+          reason: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          household_id: string
+          id?: string
+          name: string
+          reason?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          household_id?: string
+          id?: string
+          name?: string
+          reason?: string | null
+        }
+        Relationships: []
       }
       shopping_list_items: {
         Row: {
