@@ -14,6 +14,7 @@ import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppSpesaRouteImport } from './routes/_app/spesa'
 import { Route as AppRicetteRouteImport } from './routes/_app/ricette'
 import { Route as AppPianoRouteImport } from './routes/_app/piano'
 import { Route as AppDispensaRouteImport } from './routes/_app/dispensa'
@@ -42,6 +43,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AppSpesaRoute = AppSpesaRouteImport.update({
+  id: '/spesa',
+  path: '/spesa',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppRicetteRoute = AppRicetteRouteImport.update({
   id: '/ricette',
@@ -72,6 +78,7 @@ export interface FileRoutesByFullPath {
   '/dispensa': typeof AppDispensaRouteWithChildren
   '/piano': typeof AppPianoRoute
   '/ricette': typeof AppRicetteRoute
+  '/spesa': typeof AppSpesaRoute
   '/dispensa/aggiungi': typeof AppDispensaAggiungiRoute
 }
 export interface FileRoutesByTo {
@@ -82,6 +89,7 @@ export interface FileRoutesByTo {
   '/dispensa': typeof AppDispensaRouteWithChildren
   '/piano': typeof AppPianoRoute
   '/ricette': typeof AppRicetteRoute
+  '/spesa': typeof AppSpesaRoute
   '/dispensa/aggiungi': typeof AppDispensaAggiungiRoute
 }
 export interface FileRoutesById {
@@ -94,6 +102,7 @@ export interface FileRoutesById {
   '/_app/dispensa': typeof AppDispensaRouteWithChildren
   '/_app/piano': typeof AppPianoRoute
   '/_app/ricette': typeof AppRicetteRoute
+  '/_app/spesa': typeof AppSpesaRoute
   '/_app/dispensa/aggiungi': typeof AppDispensaAggiungiRoute
 }
 export interface FileRouteTypes {
@@ -106,6 +115,7 @@ export interface FileRouteTypes {
     | '/dispensa'
     | '/piano'
     | '/ricette'
+    | '/spesa'
     | '/dispensa/aggiungi'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -116,6 +126,7 @@ export interface FileRouteTypes {
     | '/dispensa'
     | '/piano'
     | '/ricette'
+    | '/spesa'
     | '/dispensa/aggiungi'
   id:
     | '__root__'
@@ -127,6 +138,7 @@ export interface FileRouteTypes {
     | '/_app/dispensa'
     | '/_app/piano'
     | '/_app/ricette'
+    | '/_app/spesa'
     | '/_app/dispensa/aggiungi'
   fileRoutesById: FileRoutesById
 }
@@ -175,6 +187,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/spesa': {
+      id: '/_app/spesa'
+      path: '/spesa'
+      fullPath: '/spesa'
+      preLoaderRoute: typeof AppSpesaRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/ricette': {
       id: '/_app/ricette'
       path: '/ricette'
@@ -222,12 +241,14 @@ interface AppRouteChildren {
   AppDispensaRoute: typeof AppDispensaRouteWithChildren
   AppPianoRoute: typeof AppPianoRoute
   AppRicetteRoute: typeof AppRicetteRoute
+  AppSpesaRoute: typeof AppSpesaRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppDispensaRoute: AppDispensaRouteWithChildren,
   AppPianoRoute: AppPianoRoute,
   AppRicetteRoute: AppRicetteRoute,
+  AppSpesaRoute: AppSpesaRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
