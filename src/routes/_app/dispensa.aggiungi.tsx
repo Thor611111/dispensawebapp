@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useHouseholdId, usePantries } from "@/lib/queries";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/AppShell";
@@ -10,8 +10,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sparkles, Loader2, Check, X, Flame } from "lucide-react";
+import { Sparkles, Loader2, Check, X, Flame, Barcode, CameraOff } from "lucide-react";
 import { toast } from "sonner";
+import { BrowserMultiFormatReader } from "@zxing/browser";
 
 export const Route = createFileRoute("/_app/dispensa/aggiungi")({ component: Aggiungi });
 
@@ -35,6 +36,61 @@ function Aggiungi() {
   const [parsing, setParsing] = useState(false);
   const [parsed, setParsed] = useState<Parsed[]>([]);
   const [saving, setSaving] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [lookup, setLookup] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const readerRef = useRef<BrowserMultiFormatReader | null>(null);
+  const controlsRef = useRef<{ stop: () => void } | null>(null);
+
+  useEffect(() => () => { controlsRef.current?.stop(); }, []);
+
+  const stopScan = () => {
+    controlsRef.current?.stop();
+    controlsRef.current = null;
+    setScanning(false);
+  };
+
+  const startScan = async () => {
+    try {
+      setScanning(true);
+      readerRef.current ??= new BrowserMultiFormatReader();
+      const controls = await readerRef.current.decodeFromVideoDevice(undefined, videoRef.current!, (result) => {
+        if (result) {
+          const code = result.getText();
+          stopScan();
+          handleBarcode(code);
+        }
+      });
+      controlsRef.current = controls;
+    } catch (e: any) {
+      setScanning(false);
+      toast.error(e?.message ?? "Impossibile accedere alla fotocamera");
+    }
+  };
+
+  const handleBarcode = async (code: string) => {
+    setLookup(true);
+    try {
+      const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json`);
+      const json = await res.json();
+      if (json.status === 1 && json.product) {
+        const p = json.product;
+        const productName = p.product_name_it || p.product_name || `Prodotto ${code}`;
+        setName(productName);
+        const cat = (p.categories_tags?.[0] ?? "").replace(/^[a-z]{2}:/, "").replace(/-/g, " ");
+        if (cat) toast.success(`Trovato: ${productName}`);
+        const kcalVal = p.nutriments?.["energy-kcal_100g"] ?? p.nutriments?.["energy-kcal"];
+        if (kcalVal) setKcal(String(Math.round(kcalVal)));
+        toast.success(productName);
+      } else {
+        toast.message(`Codice ${code}: prodotto non trovato. Compila a mano.`);
+      }
+    } catch {
+      toast.error("Errore lookup prodotto");
+    } finally {
+      setLookup(false);
+    }
+  };
 
   const effectivePantry = pantryId || pantries[0]?.id || null;
 
@@ -114,6 +170,7 @@ function Aggiungi() {
       <Tabs defaultValue="manual">
         <TabsList className="w-full">
           <TabsTrigger value="manual" className="flex-1">Manuale</TabsTrigger>
+          <TabsTrigger value="barcode" className="flex-1"><Barcode className="mr-1 h-3.5 w-3.5" /> Codice</TabsTrigger>
           <TabsTrigger value="ai" className="flex-1"><Sparkles className="mr-1 h-3.5 w-3.5" /> AI</TabsTrigger>
         </TabsList>
 
@@ -177,6 +234,28 @@ function Aggiungi() {
             </div>
             <Button type="submit" className="w-full" disabled={saving || loadingHousehold}>{saving ? "Salvataggio…" : "Aggiungi"}</Button>
           </form>
+        </TabsContent>
+
+        <TabsContent value="barcode" className="space-y-3">
+          <p className="text-sm text-muted-foreground">Inquadra il codice a barre. Recupero dati da Open Food Facts.</p>
+          <div className="overflow-hidden rounded-xl border bg-black aspect-video relative">
+            <video ref={videoRef} className="h-full w-full object-cover" muted playsInline />
+            {!scanning && (
+              <div className="absolute inset-0 flex items-center justify-center bg-background/60">
+                <Button onClick={startScan} disabled={lookup}><Barcode className="h-4 w-4" /> Avvia scanner</Button>
+              </div>
+            )}
+          </div>
+          <div className="flex gap-2">
+            {scanning && <Button variant="outline" className="flex-1" onClick={stopScan}><CameraOff className="h-4 w-4" /> Ferma</Button>}
+            {lookup && <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Cerco prodotto…</div>}
+          </div>
+          {name && (
+            <div className="rounded-xl border bg-card p-3 text-sm">
+              <p className="font-medium">{name}</p>
+              <p className="text-xs text-muted-foreground">Vai alla tab "Manuale" per completare e salvare.</p>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="ai" className="space-y-3">
