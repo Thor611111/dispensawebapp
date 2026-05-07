@@ -1,20 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
+import { ensureHousehold } from "@/lib/household";
 
 export function useHouseholdId() {
   const { user } = useAuth();
   return useQuery({
     queryKey: ["householdId", user?.id],
     enabled: !!user,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("current_household_id")
-        .eq("id", user!.id)
-        .maybeSingle();
-      return data?.current_household_id ?? null;
-    },
+    queryFn: () => ensureHousehold(user!.id),
   });
 }
 
