@@ -15,6 +15,7 @@ import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as JoinCodeRouteImport } from './routes/join.$code'
 import { Route as AppSpesaRouteImport } from './routes/_app/spesa'
 import { Route as AppRicetteRouteImport } from './routes/_app/ricette'
 import { Route as AppPianoRouteImport } from './routes/_app/piano'
@@ -60,6 +61,11 @@ const AppRoute = AppRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JoinCodeRoute = JoinCodeRouteImport.update({
+  id: '/join/$code',
+  path: '/join/$code',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppSpesaRoute = AppSpesaRouteImport.update({
@@ -164,6 +170,7 @@ export interface FileRoutesByFullPath {
   '/piano': typeof AppPianoRoute
   '/ricette': typeof AppRicetteRouteWithChildren
   '/spesa': typeof AppSpesaRoute
+  '/join/$code': typeof JoinCodeRoute
   '/dispensa/aggiungi': typeof AppDispensaAggiungiRoute
   '/impostazioni/casa': typeof AppImpostazioniCasaRoute
   '/impostazioni/notifiche': typeof AppImpostazioniNotificheRoute
@@ -188,6 +195,7 @@ export interface FileRoutesByTo {
   '/piano': typeof AppPianoRoute
   '/ricette': typeof AppRicetteRouteWithChildren
   '/spesa': typeof AppSpesaRoute
+  '/join/$code': typeof JoinCodeRoute
   '/dispensa/aggiungi': typeof AppDispensaAggiungiRoute
   '/impostazioni/casa': typeof AppImpostazioniCasaRoute
   '/impostazioni/notifiche': typeof AppImpostazioniNotificheRoute
@@ -214,6 +222,7 @@ export interface FileRoutesById {
   '/_app/piano': typeof AppPianoRoute
   '/_app/ricette': typeof AppRicetteRouteWithChildren
   '/_app/spesa': typeof AppSpesaRoute
+  '/join/$code': typeof JoinCodeRoute
   '/_app/dispensa/aggiungi': typeof AppDispensaAggiungiRoute
   '/_app/impostazioni/casa': typeof AppImpostazioniCasaRoute
   '/_app/impostazioni/notifiche': typeof AppImpostazioniNotificheRoute
@@ -240,6 +249,7 @@ export interface FileRouteTypes {
     | '/piano'
     | '/ricette'
     | '/spesa'
+    | '/join/$code'
     | '/dispensa/aggiungi'
     | '/impostazioni/casa'
     | '/impostazioni/notifiche'
@@ -264,6 +274,7 @@ export interface FileRouteTypes {
     | '/piano'
     | '/ricette'
     | '/spesa'
+    | '/join/$code'
     | '/dispensa/aggiungi'
     | '/impostazioni/casa'
     | '/impostazioni/notifiche'
@@ -289,6 +300,7 @@ export interface FileRouteTypes {
     | '/_app/piano'
     | '/_app/ricette'
     | '/_app/spesa'
+    | '/join/$code'
     | '/_app/dispensa/aggiungi'
     | '/_app/impostazioni/casa'
     | '/_app/impostazioni/notifiche'
@@ -309,6 +321,7 @@ export interface RootRouteChildren {
   OnboardingRoute: typeof OnboardingRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
+  JoinCodeRoute: typeof JoinCodeRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
   LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
   LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
@@ -356,6 +369,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/join/$code': {
+      id: '/join/$code'
+      path: '/join/$code'
+      fullPath: '/join/$code'
+      preLoaderRoute: typeof JoinCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/spesa': {
@@ -553,6 +573,7 @@ const rootRouteChildren: RootRouteChildren = {
   OnboardingRoute: OnboardingRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
+  JoinCodeRoute: JoinCodeRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
   LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
   LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
