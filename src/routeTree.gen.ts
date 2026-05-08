@@ -22,6 +22,7 @@ import { Route as AppImpostazioniRouteImport } from './routes/_app/impostazioni'
 import { Route as AppHomeRouteImport } from './routes/_app/home'
 import { Route as AppDispensaRouteImport } from './routes/_app/dispensa'
 import { Route as AppRicetteNuovaRouteImport } from './routes/_app/ricette.nuova'
+import { Route as AppImpostazioniScadenzeRouteImport } from './routes/_app/impostazioni.scadenze'
 import { Route as AppImpostazioniProfiloRouteImport } from './routes/_app/impostazioni.profilo'
 import { Route as AppImpostazioniPreferenzeRouteImport } from './routes/_app/impostazioni.preferenze'
 import { Route as AppDispensaAggiungiRouteImport } from './routes/_app/dispensa.aggiungi'
@@ -93,6 +94,11 @@ const AppRicetteNuovaRoute = AppRicetteNuovaRouteImport.update({
   path: '/nuova',
   getParentRoute: () => AppRicetteRoute,
 } as any)
+const AppImpostazioniScadenzeRoute = AppImpostazioniScadenzeRouteImport.update({
+  id: '/scadenze',
+  path: '/scadenze',
+  getParentRoute: () => AppImpostazioniRoute,
+} as any)
 const AppImpostazioniProfiloRoute = AppImpostazioniProfiloRouteImport.update({
   id: '/profilo',
   path: '/profilo',
@@ -141,6 +147,7 @@ export interface FileRoutesByFullPath {
   '/dispensa/aggiungi': typeof AppDispensaAggiungiRoute
   '/impostazioni/preferenze': typeof AppImpostazioniPreferenzeRoute
   '/impostazioni/profilo': typeof AppImpostazioniProfiloRoute
+  '/impostazioni/scadenze': typeof AppImpostazioniScadenzeRoute
   '/ricette/nuova': typeof AppRicetteNuovaRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -161,6 +168,7 @@ export interface FileRoutesByTo {
   '/dispensa/aggiungi': typeof AppDispensaAggiungiRoute
   '/impostazioni/preferenze': typeof AppImpostazioniPreferenzeRoute
   '/impostazioni/profilo': typeof AppImpostazioniProfiloRoute
+  '/impostazioni/scadenze': typeof AppImpostazioniScadenzeRoute
   '/ricette/nuova': typeof AppRicetteNuovaRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -183,6 +191,7 @@ export interface FileRoutesById {
   '/_app/dispensa/aggiungi': typeof AppDispensaAggiungiRoute
   '/_app/impostazioni/preferenze': typeof AppImpostazioniPreferenzeRoute
   '/_app/impostazioni/profilo': typeof AppImpostazioniProfiloRoute
+  '/_app/impostazioni/scadenze': typeof AppImpostazioniScadenzeRoute
   '/_app/ricette/nuova': typeof AppRicetteNuovaRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -205,6 +214,7 @@ export interface FileRouteTypes {
     | '/dispensa/aggiungi'
     | '/impostazioni/preferenze'
     | '/impostazioni/profilo'
+    | '/impostazioni/scadenze'
     | '/ricette/nuova'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -225,6 +235,7 @@ export interface FileRouteTypes {
     | '/dispensa/aggiungi'
     | '/impostazioni/preferenze'
     | '/impostazioni/profilo'
+    | '/impostazioni/scadenze'
     | '/ricette/nuova'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -246,6 +257,7 @@ export interface FileRouteTypes {
     | '/_app/dispensa/aggiungi'
     | '/_app/impostazioni/preferenze'
     | '/_app/impostazioni/profilo'
+    | '/_app/impostazioni/scadenze'
     | '/_app/ricette/nuova'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -357,6 +369,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRicetteNuovaRouteImport
       parentRoute: typeof AppRicetteRoute
     }
+    '/_app/impostazioni/scadenze': {
+      id: '/_app/impostazioni/scadenze'
+      path: '/scadenze'
+      fullPath: '/impostazioni/scadenze'
+      preLoaderRoute: typeof AppImpostazioniScadenzeRouteImport
+      parentRoute: typeof AppImpostazioniRoute
+    }
     '/_app/impostazioni/profilo': {
       id: '/_app/impostazioni/profilo'
       path: '/profilo'
@@ -417,11 +436,13 @@ const AppDispensaRouteWithChildren = AppDispensaRoute._addFileChildren(
 interface AppImpostazioniRouteChildren {
   AppImpostazioniPreferenzeRoute: typeof AppImpostazioniPreferenzeRoute
   AppImpostazioniProfiloRoute: typeof AppImpostazioniProfiloRoute
+  AppImpostazioniScadenzeRoute: typeof AppImpostazioniScadenzeRoute
 }
 
 const AppImpostazioniRouteChildren: AppImpostazioniRouteChildren = {
   AppImpostazioniPreferenzeRoute: AppImpostazioniPreferenzeRoute,
   AppImpostazioniProfiloRoute: AppImpostazioniProfiloRoute,
+  AppImpostazioniScadenzeRoute: AppImpostazioniScadenzeRoute,
 }
 
 const AppImpostazioniRouteWithChildren = AppImpostazioniRoute._addFileChildren(
