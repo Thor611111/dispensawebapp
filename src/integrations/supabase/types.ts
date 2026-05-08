@@ -41,6 +41,21 @@ export type Database = {
         }
         Relationships: []
       }
+      app_owners: {
+        Row: {
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       email_send_log: {
         Row: {
           created_at: string
@@ -884,15 +899,34 @@ export type Database = {
           email: string
           id: string
           is_admin: boolean
+          is_owner: boolean
+          last_sign_in_at: string
         }[]
       }
+      admin_log: {
+        Args: {
+          _level: string
+          _message: string
+          _metadata: Json
+          _source: string
+        }
+        Returns: undefined
+      }
       admin_overview: { Args: never; Returns: Json }
+      admin_purge_user_data: {
+        Args: { _target_user: string }
+        Returns: undefined
+      }
       admin_set_role: {
         Args: {
           _grant: boolean
           _role: Database["public"]["Enums"]["app_role"]
           _target_user: string
         }
+        Returns: undefined
+      }
+      admin_update_display_name: {
+        Args: { _name: string; _target_user: string }
         Returns: undefined
       }
       delete_email: {
@@ -911,6 +945,7 @@ export type Database = {
         Returns: boolean
       }
       is_current_user_admin: { Args: never; Returns: boolean }
+      is_current_user_owner: { Args: never; Returns: boolean }
       is_household_member: {
         Args: { _household_id: string; _user_id: string }
         Returns: boolean
