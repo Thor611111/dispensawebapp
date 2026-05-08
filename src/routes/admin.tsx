@@ -1,8 +1,8 @@
 import { createFileRoute, Outlet, Link, useNavigate, useLocation } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { useIsAdmin } from "@/lib/queries";
-import { ShieldCheck, LayoutDashboard, Users, Mail, ArrowLeft } from "lucide-react";
+import { useIsOwner } from "@/lib/queries";
+import { ShieldCheck, LayoutDashboard, Users, Mail, ArrowLeft, Terminal, ScrollText } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin")({ component: AdminLayout });
@@ -10,12 +10,14 @@ export const Route = createFileRoute("/admin")({ component: AdminLayout });
 const links = [
   { to: "/admin", label: "Overview", icon: LayoutDashboard, exact: true },
   { to: "/admin/utenti", label: "Utenti", icon: Users },
-  { to: "/admin/log-email", label: "Log email", icon: Mail },
+  { to: "/admin/logs", label: "Logs", icon: ScrollText },
+  { to: "/admin/log-email", label: "Email", icon: Mail },
+  { to: "/admin/console", label: "Console", icon: Terminal },
 ];
 
 function AdminLayout() {
   const { user, loading } = useAuth();
-  const { data: isAdmin, isLoading: roleLoading } = useIsAdmin();
+  const { data: isOwner, isLoading: roleLoading } = useIsOwner();
   const nav = useNavigate();
   const loc = useLocation();
 
@@ -24,10 +26,10 @@ function AdminLayout() {
   }, [loading, user, nav]);
 
   useEffect(() => {
-    if (!roleLoading && user && isAdmin === false) nav({ to: "/home" });
-  }, [roleLoading, isAdmin, user, nav]);
+    if (!roleLoading && user && isOwner === false) nav({ to: "/home" });
+  }, [roleLoading, isOwner, user, nav]);
 
-  if (loading || roleLoading || !user || !isAdmin) {
+  if (loading || roleLoading || !user || !isOwner) {
     return <div className="flex min-h-screen items-center justify-center text-muted-foreground">Verifica accesso…</div>;
   }
 
@@ -36,7 +38,7 @@ function AdminLayout() {
       <header className="sticky top-0 z-30 border-b bg-card/95 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3">
           <ShieldCheck className="h-5 w-5 text-primary" />
-          <h1 className="text-base font-semibold">Admin Dashboard</h1>
+          <h1 className="text-base font-semibold">Owner Console</h1>
           <Link to="/home" className="ml-auto inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-3 w-3" /> App
           </Link>
