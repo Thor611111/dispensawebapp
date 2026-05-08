@@ -27,6 +27,7 @@ import { Route as AppImpostazioniScadenzeRouteImport } from './routes/_app/impos
 import { Route as AppImpostazioniProfiloRouteImport } from './routes/_app/impostazioni.profilo'
 import { Route as AppImpostazioniPreferenzeRouteImport } from './routes/_app/impostazioni.preferenze'
 import { Route as AppImpostazioniNotificheRouteImport } from './routes/_app/impostazioni.notifiche'
+import { Route as AppImpostazioniCasaRouteImport } from './routes/_app/impostazioni.casa'
 import { Route as AppDispensaAggiungiRouteImport } from './routes/_app/dispensa.aggiungi'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
@@ -124,6 +125,11 @@ const AppImpostazioniNotificheRoute =
     path: '/notifiche',
     getParentRoute: () => AppImpostazioniRoute,
   } as any)
+const AppImpostazioniCasaRoute = AppImpostazioniCasaRouteImport.update({
+  id: '/casa',
+  path: '/casa',
+  getParentRoute: () => AppImpostazioniRoute,
+} as any)
 const AppDispensaAggiungiRoute = AppDispensaAggiungiRouteImport.update({
   id: '/aggiungi',
   path: '/aggiungi',
@@ -159,6 +165,7 @@ export interface FileRoutesByFullPath {
   '/ricette': typeof AppRicetteRouteWithChildren
   '/spesa': typeof AppSpesaRoute
   '/dispensa/aggiungi': typeof AppDispensaAggiungiRoute
+  '/impostazioni/casa': typeof AppImpostazioniCasaRoute
   '/impostazioni/notifiche': typeof AppImpostazioniNotificheRoute
   '/impostazioni/preferenze': typeof AppImpostazioniPreferenzeRoute
   '/impostazioni/profilo': typeof AppImpostazioniProfiloRoute
@@ -182,6 +189,7 @@ export interface FileRoutesByTo {
   '/ricette': typeof AppRicetteRouteWithChildren
   '/spesa': typeof AppSpesaRoute
   '/dispensa/aggiungi': typeof AppDispensaAggiungiRoute
+  '/impostazioni/casa': typeof AppImpostazioniCasaRoute
   '/impostazioni/notifiche': typeof AppImpostazioniNotificheRoute
   '/impostazioni/preferenze': typeof AppImpostazioniPreferenzeRoute
   '/impostazioni/profilo': typeof AppImpostazioniProfiloRoute
@@ -207,6 +215,7 @@ export interface FileRoutesById {
   '/_app/ricette': typeof AppRicetteRouteWithChildren
   '/_app/spesa': typeof AppSpesaRoute
   '/_app/dispensa/aggiungi': typeof AppDispensaAggiungiRoute
+  '/_app/impostazioni/casa': typeof AppImpostazioniCasaRoute
   '/_app/impostazioni/notifiche': typeof AppImpostazioniNotificheRoute
   '/_app/impostazioni/preferenze': typeof AppImpostazioniPreferenzeRoute
   '/_app/impostazioni/profilo': typeof AppImpostazioniProfiloRoute
@@ -232,6 +241,7 @@ export interface FileRouteTypes {
     | '/ricette'
     | '/spesa'
     | '/dispensa/aggiungi'
+    | '/impostazioni/casa'
     | '/impostazioni/notifiche'
     | '/impostazioni/preferenze'
     | '/impostazioni/profilo'
@@ -255,6 +265,7 @@ export interface FileRouteTypes {
     | '/ricette'
     | '/spesa'
     | '/dispensa/aggiungi'
+    | '/impostazioni/casa'
     | '/impostazioni/notifiche'
     | '/impostazioni/preferenze'
     | '/impostazioni/profilo'
@@ -279,6 +290,7 @@ export interface FileRouteTypes {
     | '/_app/ricette'
     | '/_app/spesa'
     | '/_app/dispensa/aggiungi'
+    | '/_app/impostazioni/casa'
     | '/_app/impostazioni/notifiche'
     | '/_app/impostazioni/preferenze'
     | '/_app/impostazioni/profilo'
@@ -430,6 +442,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppImpostazioniNotificheRouteImport
       parentRoute: typeof AppImpostazioniRoute
     }
+    '/_app/impostazioni/casa': {
+      id: '/_app/impostazioni/casa'
+      path: '/casa'
+      fullPath: '/impostazioni/casa'
+      preLoaderRoute: typeof AppImpostazioniCasaRouteImport
+      parentRoute: typeof AppImpostazioniRoute
+    }
     '/_app/dispensa/aggiungi': {
       id: '/_app/dispensa/aggiungi'
       path: '/aggiungi'
@@ -474,6 +493,7 @@ const AppDispensaRouteWithChildren = AppDispensaRoute._addFileChildren(
 )
 
 interface AppImpostazioniRouteChildren {
+  AppImpostazioniCasaRoute: typeof AppImpostazioniCasaRoute
   AppImpostazioniNotificheRoute: typeof AppImpostazioniNotificheRoute
   AppImpostazioniPreferenzeRoute: typeof AppImpostazioniPreferenzeRoute
   AppImpostazioniProfiloRoute: typeof AppImpostazioniProfiloRoute
@@ -482,6 +502,7 @@ interface AppImpostazioniRouteChildren {
 }
 
 const AppImpostazioniRouteChildren: AppImpostazioniRouteChildren = {
+  AppImpostazioniCasaRoute: AppImpostazioniCasaRoute,
   AppImpostazioniNotificheRoute: AppImpostazioniNotificheRoute,
   AppImpostazioniPreferenzeRoute: AppImpostazioniPreferenzeRoute,
   AppImpostazioniProfiloRoute: AppImpostazioniProfiloRoute,
