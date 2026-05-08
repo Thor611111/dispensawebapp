@@ -1,7 +1,7 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useLocation, useNavigate, Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/AppShell";
 import { useAuth } from "@/lib/auth-context";
-import { useHouseholdId, usePreferences, useExpenses } from "@/lib/queries";
+import { useHouseholdId, usePreferences, useExpenses, useProfile } from "@/lib/queries";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import { PasswordInput } from "@/components/PasswordInput";
 import { Badge } from "@/components/ui/badge";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { LogOut, Trash2 } from "lucide-react";
+import { LogOut, Trash2, User, Bell, Utensils, Clock, Home as HomeIcon, ChevronRight, KeyRound } from "lucide-react";
 import { InstallAppCard } from "@/components/InstallAppCard";
 import {
   AlertDialog,
@@ -23,6 +23,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Slider } from "@/components/ui/slider";
 import { useQueryClient } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/_app/impostazioni")({ component: Impostazioni });
@@ -34,58 +35,19 @@ const DIETS = [
 ] as const;
 
 function Impostazioni() {
+  const location = useLocation();
+  if (location.pathname !== "/impostazioni") return <Outlet />;
+  return <ImpostazioniIndex />;
+}
+
+function ImpostazioniIndex() {
   const { user, signOut } = useAuth();
   const nav = useNavigate();
-  const queryClient = useQueryClient();
-  const { data: hid } = useHouseholdId();
-  const { data: prefs } = usePreferences(hid);
-  const { data: expenses = [] } = useExpenses(hid);
-
-  const [size, setSize] = useState(2);
-  const [diets, setDiets] = useState<string[]>([]);
-  const [allergies, setAllergies] = useState("");
-  const [budget, setBudget] = useState("");
-  const [monthlyBudget, setMonthlyBudget] = useState("");
-  const [newPwd, setNewPwd] = useState("");
-  const [confirmPwd, setConfirmPwd] = useState("");
-  const [pwdLoading, setPwdLoading] = useState(false);
-
-  useEffect(() => {
-    if (prefs) {
-      setSize(prefs.household_size);
-      setDiets(prefs.diets ?? []);
-      setAllergies((prefs.allergies ?? []).join(", "));
-      setBudget(prefs.weekly_budget ? String(prefs.weekly_budget) : "");
-      setMonthlyBudget(prefs.monthly_budget ? String(prefs.monthly_budget) : "");
-    }
-  }, [prefs]);
-
-  const save = async () => {
-    if (!hid) return toast.error("Profilo in preparazione, riprova tra un secondo");
-    const { error } = await supabase.from("user_preferences").upsert({
-      household_id: hid,
-      household_size: size,
-      diets: diets as never,
-      allergies: allergies.split(",").map((s) => s.trim()).filter(Boolean),
-      weekly_budget: budget ? Number(budget) : null,
-      monthly_budget: monthlyBudget ? Number(monthlyBudget) : null,
-    });
-    if (error) return toast.error(error.message);
-    await queryClient.invalidateQueries({ queryKey: ["prefs", hid] });
-    toast.success("Salvato");
-  };
-
-  const toggle = (v: string) => setDiets(diets.includes(v) ? diets.filter((d) => d !== v) : [...diets, v]);
-
-  // Spesa ultima settimana
-  const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
-  const weekSpent = expenses.filter((e) => new Date(e.spent_on) >= weekAgo).reduce((s, e) => s + Number(e.amount), 0);
-
+  const { data: profile } = useProfile();
   const logout = async () => {
     await signOut();
     nav({ to: "/" });
   };
-
   const deleteAccount = async () => {
     const { error } = await supabase.functions.invoke("delete-account");
     if (error) return toast.error(error.message);
@@ -94,76 +56,34 @@ function Impostazioni() {
     nav({ to: "/" });
   };
 
-  const changePassword = async () => {
-    if (newPwd.length < 6) return toast.error("La password deve essere di almeno 6 caratteri");
-    if (newPwd !== confirmPwd) return toast.error("Le password non coincidono");
-    setPwdLoading(true);
-    const { error } = await supabase.auth.updateUser({ password: newPwd });
-    setPwdLoading(false);
-    if (error) return toast.error(error.message);
-    setNewPwd(""); setConfirmPwd("");
-    toast.success("Password aggiornata");
-  };
+  const sections = [
+    { to: "/impostazioni/profilo", label: "Profilo", desc: profile?.display_name ?? user?.email ?? "", icon: User },
+    { to: "/impostazioni/preferenze", label: "Preferenze alimentari", desc: "Diete, allergie, persone", icon: Utensils },
+    { to: "/impostazioni/scadenze", label: "Scadenze e budget", desc: "Avvisi e tetti di spesa", icon: Clock },
+    { to: "/impostazioni/notifiche", label: "Notifiche", desc: "Promemoria e canali", icon: Bell },
+    { to: "/impostazioni/casa", label: "Casa & membri", desc: "Condividi il nucleo", icon: HomeIcon },
+    { to: "/impostazioni/sicurezza", label: "Password e sicurezza", desc: "Cambia password", icon: KeyRound },
+  ] as const;
 
   return (
     <div>
       <PageHeader title="Impostazioni" subtitle={user?.email ?? ""} />
-
       <InstallAppCard />
-
-      <div className="mb-6 grid grid-cols-2 gap-3">
-        <div className="rounded-xl border bg-card p-4">
-          <p className="text-xs text-muted-foreground">Spesa 7 giorni</p>
-          <p className="mt-1 text-2xl font-bold">{weekSpent.toFixed(2)} €</p>
-        </div>
-        <div className="rounded-xl border bg-card p-4">
-          <p className="text-xs text-muted-foreground">Budget settimanale</p>
-          <p className="mt-1 text-2xl font-bold">{prefs?.weekly_budget ? `${prefs.weekly_budget} €` : "—"}</p>
-        </div>
-      </div>
-
-      <div className="space-y-4">
-        <div className="space-y-2">
-          <Label>Persone nel nucleo</Label>
-          <Input type="number" min={1} value={size} onChange={(e) => setSize(Number(e.target.value))} />
-        </div>
-        <div className="space-y-2">
-          <Label>Diete</Label>
-          <div className="flex flex-wrap gap-2">
-            {DIETS.map((d) => (
-              <Badge key={d.v} variant={diets.includes(d.v) ? "default" : "outline"} className="cursor-pointer" onClick={() => toggle(d.v)}>{d.l}</Badge>
-            ))}
-          </div>
-        </div>
-        <div className="space-y-2">
-          <Label>Allergie</Label>
-          <Input value={allergies} onChange={(e) => setAllergies(e.target.value)} placeholder="arachidi, frutta a guscio…" />
-        </div>
-        <div className="space-y-2">
-          <Label>Budget settimanale (€)</Label>
-          <Input type="number" value={budget} onChange={(e) => setBudget(e.target.value)} />
-        </div>
-        <div className="space-y-2">
-          <Label>Budget mensile (€)</Label>
-          <Input type="number" value={monthlyBudget} onChange={(e) => setMonthlyBudget(e.target.value)} />
-        </div>
-        <Button className="w-full" onClick={save}>Salva preferenze</Button>
-
-        <div className="rounded-xl border bg-card p-4 space-y-3">
-          <p className="font-semibold">Modifica password</p>
-          <div className="space-y-2">
-            <Label>Nuova password</Label>
-            <PasswordInput value={newPwd} onChange={(e) => setNewPwd(e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label>Conferma password</Label>
-            <PasswordInput value={confirmPwd} onChange={(e) => setConfirmPwd(e.target.value)} />
-          </div>
-          <Button variant="secondary" className="w-full" disabled={pwdLoading} onClick={changePassword}>
-            {pwdLoading ? "Aggiornamento…" : "Aggiorna password"}
-          </Button>
-        </div>
-
+      <ul className="divide-y rounded-2xl border bg-card overflow-hidden">
+        {sections.map((s) => (
+          <li key={s.to}>
+            <Link to={s.to} className="flex items-center gap-3 px-4 py-3.5 hover:bg-secondary/40 transition">
+              <s.icon className="h-5 w-5 text-primary" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium">{s.label}</p>
+                {s.desc && <p className="truncate text-xs text-muted-foreground">{s.desc}</p>}
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </Link>
+          </li>
+        ))}
+      </ul>
+      <div className="mt-6 space-y-2">
         <Button variant="outline" className="w-full" onClick={logout}><LogOut className="h-4 w-4" /> Esci</Button>
         <AlertDialog>
           <AlertDialogTrigger asChild>
