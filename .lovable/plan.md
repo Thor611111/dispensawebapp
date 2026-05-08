@@ -1,78 +1,67 @@
-## Sintesi
 
-Combiniamo la richiesta corrente (acquisto articoli → dispensa giusta + scalo budget + scontrino) con le funzionalità mancanti rispetto alla visione dell'app. Procediamo a ondate piccole e testabili, partendo dal flusso spesa→dispensa→budget che è il blocco più richiesto.
+## Obiettivo
 
-## Stato attuale (cosa c'è già)
+Permettere agli utenti di installare PantryAI sulla home del telefono (iOS/Android) e sul desktop, con un pulsante "Installa app" nativo dell'app. Inoltre chiarire cosa serve per pubblicare su App Store e Play Store.
 
-✅ Dispensa multipla, kcal AI, scadenze, posizioni  
-✅ Lista spesa, suggerimenti AI prodotti, recommended_products  
-✅ Ricette suggerite/salvate/personalizzate, like/dislike, tempi prep  
-✅ Piano pasti settimanale  
-✅ Home con budget settimanale, spesa mese, ricette rapide  
-✅ Preferenze: diete, allergie, dislikes, obiettivi, budget, household_size  
-✅ Multi-utente per household
+---
 
-## Cosa manca / da migliorare (prioritizzato)
+## Parte 1 — Installabilità (PWA "manifest-only")
 
-### 🔴 ONDATA 1 — Flusso acquisto + budget (richiesta esplicita)
+L'app ha già `public/manifest.webmanifest` con `display: standalone`, icone 192/512 e theme color. Questo è già sufficiente per essere installabile su Android e desktop (Chrome/Edge) e per "Aggiungi a Home" su iOS Safari. Manca solo l'esperienza utente che la suggerisce.
 
-**`src/routes/_app/spesa.tsx`**
-- Selettore **Dispensa di destinazione** in cima.
-- Bottone **"Acquistato"** per singolo articolo → dialog con prezzo + quantità reale → inserisce in `food_items` (con `pantry_id` scelto) + crea riga `expenses` → rimuove dalla lista. Budget Home si scala automaticamente.
-- Bottone in fondo **"Chiudi spesa"** con due modalità:
-  - **Totale manuale**: inserisci importo scontrino → tutti gli spuntati vanno in dispensa, una sola `expenses`.
-  - **📷 Foto scontrino (AI)**: upload foto → edge function `ai-scan-receipt` (Lovable AI vision Gemini) restituisce `{items:[{name,price,quantity}], total}`. Match per nome con articoli spuntati, gli sconosciuti vengono aggiunti come nuovi alimenti. Crea una sola `expenses` col totale.
+**Cosa aggiungo (solo frontend, nessun service worker):**
 
-**Nuova edge function** `supabase/functions/ai-scan-receipt/index.ts` — vision con `google/gemini-2.5-flash`, input `{imageBase64}`, output JSON strutturato.
+1. Hook `useInstallPrompt` in `src/hooks/use-install-prompt.tsx`
+   - Cattura l'evento `beforeinstallprompt` (Android/desktop) e lo conserva.
+   - Rileva iOS Safari e modalità già installata (`display-mode: standalone` / `navigator.standalone`).
+   - Espone `{ canInstall, isIOS, isInstalled, promptInstall() }`.
 
-### 🟡 ONDATA 2 — Scansione codici a barre + import ricette da link
+2. Componente `InstallAppCard` in `src/components/InstallAppCard.tsx`
+   - Su Android/desktop: pulsante "Installa app" che chiama `promptInstall()`.
+   - Su iOS: istruzioni brevi ("Tocca Condividi → Aggiungi a Home").
+   - Si nasconde se l'app è già installata o se l'utente l'ha chiusa (flag in `localStorage`).
 
-**Barcode scanner in `dispensa.aggiungi.tsx`**
-- Tab nuovo **"📷 Codice a barre"** usando `@zxing/browser` (Web API `getUserMedia`, funziona su mobile web e PWA).
-- Lookup prodotto via **Open Food Facts API** (gratis, no key): `https://world.openfoodfacts.org/api/v2/product/{barcode}.json` → precompila nome, categoria, kcal, marca.
-- Fallback: se non trovato, l'utente compila a mano col nome già letto.
+3. Punti di ingresso nell'app
+   - Banner discreto in `src/routes/_app/home.tsx` (sopra il contenuto, dismissibile).
+   - Voce "Installa app" nella pagina `src/routes/_app/impostazioni.tsx`.
+   - Pulsante "Installa app" nella landing `src/routes/index.tsx` accanto a "Inizia gratis".
 
-**Import ricetta da URL in `ricette.nuova.tsx`**
-- Tab **"🔗 Da link"** → nuova edge function `ai-import-recipe` che fa `fetch(url)`, estrae HTML e chiede a Gemini di strutturare titolo, ingredienti, istruzioni, tempo, costo stimato.
+4. Verifica `public/manifest.webmanifest`
+   - Aggiungo `id: "/"` e `scope: "/"` per stabilità install (cambia solo per nuove installazioni, non rompe quelle esistenti).
+   - Mantengo `display: standalone`, theme color esistente.
 
-### 🟢 ONDATA 3 — Intelligenza adattiva + spiegazioni
+**Non includo** `vite-plugin-pwa` né service worker: non serve per l'installabilità e creerebbe problemi di cache nella preview Lovable. Questo significa: niente offline. Se in futuro serve l'offline lo affrontiamo separatamente.
 
-**Apprendimento abitudini**
-- Tracciare `recipe_feedback` (già presente) e `food_items` consumati per migliorare i suggerimenti — già parzialmente fatto. Estendere `ai-suggest-recipes` per pesare gli ingredienti **realmente usati spesso** (calcolato dai consumi storici).
-- Aggiungere campo `last_used_at` su `food_items` (migration) e aggiornarlo quando un alimento viene rimosso/finito.
+---
 
-**Spiegazioni "perché"**
-- Le ricette AI hanno già `reason`. Estendere anche al **piano pasti settimanale**: ogni entry mostra una badge "💡 perché" con motivo (es. "usa yogurt in scadenza", "rispetta budget").
+## Parte 2 — App Store e Play Store
 
-**Filtri ricette**
-- Aggiungere filtri rapidi sopra la lista ricette: **tempo max** (15/30/60 min), **costo max**, **difficoltà**. Già abbiamo i campi nel DB.
+Risposta breve: **sì, è possibile, ma non è automatico** e non lo si fa "da Lovable". Ci sono due strade:
 
-### 🔵 ONDATA 4 — Budget mensile + monitoraggio nel tempo
+### Opzione A — Pubblicare la PWA come app "wrappata" (consigliata, costo basso)
+- **Play Store (Android)**: si crea una **TWA** (Trusted Web Activity) con Bubblewrap di Google. La PWA pubblicata su `dispensawebapp.lovable.app` (o un dominio custom) viene impacchettata in un APK/AAB e caricata sul Play Store. Servono: account Google Play Developer (~25 $ una tantum), file `assetlinks.json` sul dominio, icone store, screenshot, privacy policy.
+- **App Store (iOS)**: Apple non accetta PWA pure. Si usa un wrapper come **Capacitor** (o PWABuilder iOS) che incapsula il sito in una WebView nativa. Servono: account Apple Developer (99 $/anno), Mac con Xcode (o servizio di build cloud tipo Codemagic/Ionic Appflow), icone, screenshot, privacy policy, conformità alle linee guida Apple (l'app deve offrire valore "nativo": notifiche push, fotocamera, ecc., altrimenti rischia il rifiuto in review).
 
-- Aggiungere campo `monthly_budget` a `user_preferences` (migration).
-- In `impostazioni.tsx`: input per budget mensile.
-- In Home: progress bar per budget mensile sotto quello settimanale.
-- Nuova sezione **"Andamento spesa"** in Home o pagina dedicata `/statistiche` con grafico ultime 8 settimane (recharts già installato).
+Vantaggi: una sola codebase (questa). Tempi: 1–2 settimane di lavoro extra.
 
-### ⚪ ONDATA 5 — Refinements UX
+### Opzione B — App nativa vera (React Native/Flutter)
+- Riscrivere l'interfaccia mobile in React Native o Flutter, riusando le API/Cloud esistenti. Maggior costo e tempo, ma esperienza più "nativa". **Lovable non genera React Native**, andrebbe fatto fuori.
 
-- Suggerimenti precompilati nelle dispense (es. "hai poca pasta?" se quantità < soglia).
-- Notifiche in-app per scadenze imminenti (badge sul tab Dispensa).
-- PWA: verificare manifest e installabilità su iOS/Android (già abbiamo `public/manifest.webmanifest`).
+### Cosa posso fare ora dentro Lovable
+Solo la Parte 1 (installabilità + UX di install prompt). Il packaging per gli store si fa fuori da Lovable, una volta che l'app web è stabile e pubblicata su un dominio (anche `notify.pantryai.it` o un dominio principale).
 
-## Cosa NON faremo
+---
 
-- App nativa iOS/Android: la PWA copre tutti i target richiesti senza store. Lo segnaliamo come scelta architetturale.
-- Sync multi-dispositivo: già garantita da Lovable Cloud (Supabase) — nessun lavoro extra.
+## Dettagli tecnici
 
-## Database — migrations necessarie
+- File creati: `src/hooks/use-install-prompt.tsx`, `src/components/InstallAppCard.tsx`.
+- File modificati: `public/manifest.webmanifest` (aggiunta `id`/`scope`), `src/routes/_app/home.tsx`, `src/routes/_app/impostazioni.tsx`, `src/routes/index.tsx`.
+- Nessuna modifica a backend, DB o edge function.
+- Nessun service worker, nessun `vite-plugin-pwa`.
+- Tipizzazione `BeforeInstallPromptEvent` definita localmente nell'hook.
 
-Solo 2 piccole:
-1. `food_items.last_used_at TIMESTAMPTZ NULL` (per ondata 3).
-2. `user_preferences.monthly_budget NUMERIC NULL` (per ondata 4).
+---
 
-Nessuna nuova tabella.
+## Domanda per te prima di procedere
 
-## Ordine di esecuzione proposto
-
-Ti chiedo di confermare se vuoi che parta **subito con l'Ondata 1** (la richiesta esplicita di oggi: acquisto + scontrino + scalo budget) e poi proseguire con le successive una alla volta, oppure se preferisci che faccia tutto insieme in un'unica grande modifica. La modalità incrementale è più sicura e ti permette di testare ogni step.
+Vuoi che proceda con la **Parte 1** (rendere l'app installabile con pulsante e istruzioni iOS) e che successivamente, in un task separato, prepariamo la guida + i file (icone, manifest, assetlinks.json) per impacchettarla per Play Store e App Store? Oppure preferisci limitarti per ora alla sola installabilità web?
