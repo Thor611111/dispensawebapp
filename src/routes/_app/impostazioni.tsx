@@ -1,7 +1,7 @@
 import { createFileRoute, Outlet, useLocation, useNavigate, Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/AppShell";
 import { useAuth } from "@/lib/auth-context";
-import { useHouseholdId, usePreferences, useExpenses, useProfile } from "@/lib/queries";
+import { useHouseholdId, usePreferences, useExpenses, useProfile, useIsAdmin } from "@/lib/queries";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import { PasswordInput } from "@/components/PasswordInput";
 import { Badge } from "@/components/ui/badge";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { LogOut, Trash2, User, Bell, Utensils, Clock, Home as HomeIcon, ChevronRight, KeyRound } from "lucide-react";
+import { LogOut, Trash2, User, Bell, Utensils, Clock, Home as HomeIcon, ChevronRight, KeyRound, ShieldCheck } from "lucide-react";
 import { InstallAppCard } from "@/components/InstallAppCard";
 import {
   AlertDialog,
@@ -44,6 +44,7 @@ function ImpostazioniIndex() {
   const { user, signOut } = useAuth();
   const nav = useNavigate();
   const { data: profile } = useProfile();
+  const { data: isAdmin } = useIsAdmin();
   const logout = async () => {
     await signOut();
     nav({ to: "/" });
@@ -63,7 +64,8 @@ function ImpostazioniIndex() {
     { to: "/impostazioni/notifiche", label: "Notifiche", desc: "Promemoria e canali", icon: Bell },
     { to: "/impostazioni/casa", label: "Casa & membri", desc: "Condividi il nucleo", icon: HomeIcon },
     { to: "/impostazioni/sicurezza", label: "Password e sicurezza", desc: "Cambia password", icon: KeyRound },
-  ] as const;
+    ...(isAdmin ? [{ to: "/admin" as const, label: "Admin Dashboard", desc: "Gestione app", icon: ShieldCheck }] : []),
+  ];
 
   return (
     <div>
