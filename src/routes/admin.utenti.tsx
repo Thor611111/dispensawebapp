@@ -5,20 +5,31 @@ import { listAdminUsers, setUserAdminRole } from "@/lib/admin.functions";
 import { Loader2, Shield, ShieldOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/admin/utenti")({ component: Page });
 
 function Page() {
+  const { session } = useAuth();
+  const accessToken = session?.access_token;
   const fn = useServerFn(listAdminUsers);
   const setRole = useServerFn(setUserAdminRole);
   const qc = useQueryClient();
-  const { data = [], isLoading } = useQuery({ queryKey: ["admin-users"], queryFn: () => fn({}) });
+  const { data = [], isLoading, error } = useQuery({
+    queryKey: ["admin-users"],
+    enabled: !!accessToken,
+    queryFn: () => fn({ data: { accessToken: accessToken! } }),
+  });
   const m = useMutation({
-    mutationFn: (v: { userId: string; grant: boolean }) => setRole({ data: v }),
+    mutationFn: (v: { userId: string; grant: boolean }) => {
+      if (!accessToken) throw new Error("Sessione non disponibile");
+      return setRole({ data: { ...v, accessToken } });
+    },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin-users"] }); toast.success("Ruolo aggiornato"); },
     onError: (e: any) => toast.error(e?.message ?? "Errore"),
   });
   if (isLoading) return <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin" /></div>;
+  if (error) return <div className="rounded-2xl border bg-card p-4 text-sm text-destructive">{error.message}</div>;
   return (
     <div className="overflow-hidden rounded-2xl border bg-card">
       <table className="w-full text-sm">
