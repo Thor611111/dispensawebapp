@@ -33,6 +33,7 @@ import { Route as AppDispensaAggiungiRouteImport } from './routes/_app/dispensa.
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
+import { Route as ApiPublicHooksDailyNotificationsRouteImport } from './routes/api/public/hooks/daily-notifications'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -157,6 +158,12 @@ const LovableEmailAuthPreviewRoute = LovableEmailAuthPreviewRouteImport.update({
   path: '/lovable/email/auth/preview',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHooksDailyNotificationsRoute =
+  ApiPublicHooksDailyNotificationsRouteImport.update({
+    id: '/api/public/hooks/daily-notifications',
+    path: '/api/public/hooks/daily-notifications',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -179,6 +186,7 @@ export interface FileRoutesByFullPath {
   '/impostazioni/scadenze': typeof AppImpostazioniScadenzeRoute
   '/impostazioni/sicurezza': typeof AppImpostazioniSicurezzaRoute
   '/ricette/nuova': typeof AppRicetteNuovaRoute
+  '/api/public/hooks/daily-notifications': typeof ApiPublicHooksDailyNotificationsRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
@@ -204,6 +212,7 @@ export interface FileRoutesByTo {
   '/impostazioni/scadenze': typeof AppImpostazioniScadenzeRoute
   '/impostazioni/sicurezza': typeof AppImpostazioniSicurezzaRoute
   '/ricette/nuova': typeof AppRicetteNuovaRoute
+  '/api/public/hooks/daily-notifications': typeof ApiPublicHooksDailyNotificationsRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
@@ -231,6 +240,7 @@ export interface FileRoutesById {
   '/_app/impostazioni/scadenze': typeof AppImpostazioniScadenzeRoute
   '/_app/impostazioni/sicurezza': typeof AppImpostazioniSicurezzaRoute
   '/_app/ricette/nuova': typeof AppRicetteNuovaRoute
+  '/api/public/hooks/daily-notifications': typeof ApiPublicHooksDailyNotificationsRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
@@ -258,6 +268,7 @@ export interface FileRouteTypes {
     | '/impostazioni/scadenze'
     | '/impostazioni/sicurezza'
     | '/ricette/nuova'
+    | '/api/public/hooks/daily-notifications'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/queue/process'
@@ -283,6 +294,7 @@ export interface FileRouteTypes {
     | '/impostazioni/scadenze'
     | '/impostazioni/sicurezza'
     | '/ricette/nuova'
+    | '/api/public/hooks/daily-notifications'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/queue/process'
@@ -309,6 +321,7 @@ export interface FileRouteTypes {
     | '/_app/impostazioni/scadenze'
     | '/_app/impostazioni/sicurezza'
     | '/_app/ricette/nuova'
+    | '/api/public/hooks/daily-notifications'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/queue/process'
@@ -322,6 +335,7 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
   JoinCodeRoute: typeof JoinCodeRoute
+  ApiPublicHooksDailyNotificationsRoute: typeof ApiPublicHooksDailyNotificationsRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
   LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
   LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
@@ -497,6 +511,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LovableEmailAuthPreviewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/daily-notifications': {
+      id: '/api/public/hooks/daily-notifications'
+      path: '/api/public/hooks/daily-notifications'
+      fullPath: '/api/public/hooks/daily-notifications'
+      preLoaderRoute: typeof ApiPublicHooksDailyNotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -574,6 +595,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
   JoinCodeRoute: JoinCodeRoute,
+  ApiPublicHooksDailyNotificationsRoute: ApiPublicHooksDailyNotificationsRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
   LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
   LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
