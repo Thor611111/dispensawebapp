@@ -26,6 +26,7 @@ import { Route as AppImpostazioniSicurezzaRouteImport } from './routes/_app/impo
 import { Route as AppImpostazioniScadenzeRouteImport } from './routes/_app/impostazioni.scadenze'
 import { Route as AppImpostazioniProfiloRouteImport } from './routes/_app/impostazioni.profilo'
 import { Route as AppImpostazioniPreferenzeRouteImport } from './routes/_app/impostazioni.preferenze'
+import { Route as AppImpostazioniNotificheRouteImport } from './routes/_app/impostazioni.notifiche'
 import { Route as AppDispensaAggiungiRouteImport } from './routes/_app/dispensa.aggiungi'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
@@ -117,6 +118,12 @@ const AppImpostazioniPreferenzeRoute =
     path: '/preferenze',
     getParentRoute: () => AppImpostazioniRoute,
   } as any)
+const AppImpostazioniNotificheRoute =
+  AppImpostazioniNotificheRouteImport.update({
+    id: '/notifiche',
+    path: '/notifiche',
+    getParentRoute: () => AppImpostazioniRoute,
+  } as any)
 const AppDispensaAggiungiRoute = AppDispensaAggiungiRouteImport.update({
   id: '/aggiungi',
   path: '/aggiungi',
@@ -152,6 +159,7 @@ export interface FileRoutesByFullPath {
   '/ricette': typeof AppRicetteRouteWithChildren
   '/spesa': typeof AppSpesaRoute
   '/dispensa/aggiungi': typeof AppDispensaAggiungiRoute
+  '/impostazioni/notifiche': typeof AppImpostazioniNotificheRoute
   '/impostazioni/preferenze': typeof AppImpostazioniPreferenzeRoute
   '/impostazioni/profilo': typeof AppImpostazioniProfiloRoute
   '/impostazioni/scadenze': typeof AppImpostazioniScadenzeRoute
@@ -174,6 +182,7 @@ export interface FileRoutesByTo {
   '/ricette': typeof AppRicetteRouteWithChildren
   '/spesa': typeof AppSpesaRoute
   '/dispensa/aggiungi': typeof AppDispensaAggiungiRoute
+  '/impostazioni/notifiche': typeof AppImpostazioniNotificheRoute
   '/impostazioni/preferenze': typeof AppImpostazioniPreferenzeRoute
   '/impostazioni/profilo': typeof AppImpostazioniProfiloRoute
   '/impostazioni/scadenze': typeof AppImpostazioniScadenzeRoute
@@ -198,6 +207,7 @@ export interface FileRoutesById {
   '/_app/ricette': typeof AppRicetteRouteWithChildren
   '/_app/spesa': typeof AppSpesaRoute
   '/_app/dispensa/aggiungi': typeof AppDispensaAggiungiRoute
+  '/_app/impostazioni/notifiche': typeof AppImpostazioniNotificheRoute
   '/_app/impostazioni/preferenze': typeof AppImpostazioniPreferenzeRoute
   '/_app/impostazioni/profilo': typeof AppImpostazioniProfiloRoute
   '/_app/impostazioni/scadenze': typeof AppImpostazioniScadenzeRoute
@@ -222,6 +232,7 @@ export interface FileRouteTypes {
     | '/ricette'
     | '/spesa'
     | '/dispensa/aggiungi'
+    | '/impostazioni/notifiche'
     | '/impostazioni/preferenze'
     | '/impostazioni/profilo'
     | '/impostazioni/scadenze'
@@ -244,6 +255,7 @@ export interface FileRouteTypes {
     | '/ricette'
     | '/spesa'
     | '/dispensa/aggiungi'
+    | '/impostazioni/notifiche'
     | '/impostazioni/preferenze'
     | '/impostazioni/profilo'
     | '/impostazioni/scadenze'
@@ -267,6 +279,7 @@ export interface FileRouteTypes {
     | '/_app/ricette'
     | '/_app/spesa'
     | '/_app/dispensa/aggiungi'
+    | '/_app/impostazioni/notifiche'
     | '/_app/impostazioni/preferenze'
     | '/_app/impostazioni/profilo'
     | '/_app/impostazioni/scadenze'
@@ -410,6 +423,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppImpostazioniPreferenzeRouteImport
       parentRoute: typeof AppImpostazioniRoute
     }
+    '/_app/impostazioni/notifiche': {
+      id: '/_app/impostazioni/notifiche'
+      path: '/notifiche'
+      fullPath: '/impostazioni/notifiche'
+      preLoaderRoute: typeof AppImpostazioniNotificheRouteImport
+      parentRoute: typeof AppImpostazioniRoute
+    }
     '/_app/dispensa/aggiungi': {
       id: '/_app/dispensa/aggiungi'
       path: '/aggiungi'
@@ -454,6 +474,7 @@ const AppDispensaRouteWithChildren = AppDispensaRoute._addFileChildren(
 )
 
 interface AppImpostazioniRouteChildren {
+  AppImpostazioniNotificheRoute: typeof AppImpostazioniNotificheRoute
   AppImpostazioniPreferenzeRoute: typeof AppImpostazioniPreferenzeRoute
   AppImpostazioniProfiloRoute: typeof AppImpostazioniProfiloRoute
   AppImpostazioniScadenzeRoute: typeof AppImpostazioniScadenzeRoute
@@ -461,6 +482,7 @@ interface AppImpostazioniRouteChildren {
 }
 
 const AppImpostazioniRouteChildren: AppImpostazioniRouteChildren = {
+  AppImpostazioniNotificheRoute: AppImpostazioniNotificheRoute,
   AppImpostazioniPreferenzeRoute: AppImpostazioniPreferenzeRoute,
   AppImpostazioniProfiloRoute: AppImpostazioniProfiloRoute,
   AppImpostazioniScadenzeRoute: AppImpostazioniScadenzeRoute,
@@ -517,3 +539,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
