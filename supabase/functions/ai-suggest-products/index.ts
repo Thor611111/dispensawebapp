@@ -1,3 +1,4 @@
+import { requireUser } from "../_shared/auth.ts";
 const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -5,6 +6,8 @@ const cors = {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
+  const authCheck = await requireUser(req);
+  if (authCheck instanceof Response) return authCheck;
   try {
     const { foodItems = [], preferences, expenses = [] } = await req.json();
     const apiKey = Deno.env.get("LOVABLE_API_KEY");

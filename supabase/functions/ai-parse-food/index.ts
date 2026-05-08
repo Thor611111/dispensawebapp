@@ -1,3 +1,4 @@
+import { requireUser } from "../_shared/auth.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
 const cors = {
@@ -7,6 +8,8 @@ const cors = {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
+  const authCheck = await requireUser(req);
+  if (authCheck instanceof Response) return authCheck;
 
   try {
     const { text, imageBase64 } = await req.json();
