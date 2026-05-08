@@ -11,7 +11,12 @@ const SLOT_LABELS: Record<string, string> = {
 export const Route = createFileRoute('/api/public/hooks/daily-notifications')({
   server: {
     handlers: {
-      POST: async () => {
+      POST: async ({ request }) => {
+        const secret = process.env.CRON_SECRET
+        const authHeader = request.headers.get('Authorization')
+        if (!secret || authHeader !== `Bearer ${secret}`) {
+          return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 })
+        }
         const SUPABASE_URL = process.env.SUPABASE_URL!
         const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!
         const APP_URL = 'https://dispensawebapp.lovable.app'

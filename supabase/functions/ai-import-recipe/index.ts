@@ -1,3 +1,4 @@
+import { requireUser } from "../_shared/auth.ts";
 const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -5,13 +6,21 @@ const cors = {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
+  const authCheck = await requireUser(req);
+  if (authCheck instanceof Response) return authCheck;
   try {
     const { url } = await req.json();
     if (!url) throw new Error("url mancante");
+    let parsed: URL;
+    try { parsed = new URL(url); } catch { throw new Error("URL non valido"); }
+    if (!["http:", "https:"].includes(parsed.protocol)) throw new Error("Solo http/https");
+    const host = parsed.hostname.toLowerCase();
+    const blocked = /^(localhost|127\.|10\.|192\.168\.|169\.254\.|::1|0\.|fc00:|fd00:)/i;
+    if (blocked.test(host) || /^172\.(1[6-9]|2\d|3[01])\./.test(host)) throw new Error("Host non consentito");
     const apiKey = Deno.env.get("LOVABLE_API_KEY");
     if (!apiKey) throw new Error("LOVABLE_API_KEY missing");
 
-    const pageRes = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0 DispensaBot" } });
+    const pageRes = await fetch(parsed.toString(), { headers: { "User-Agent": "Mozilla/5.0 DispensaBot" }, redirect: "manual" });
     if (!pageRes.ok) throw new Error(`Impossibile caricare la pagina (${pageRes.status})`);
     let html = await pageRes.text();
     // strip scripts/styles + tags to keep payload small
