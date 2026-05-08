@@ -5,7 +5,7 @@ import { useIsAdmin } from "@/lib/queries";
 import { ShieldCheck, LayoutDashboard, Users, Home as HomeIcon, FileText, Activity, Mail, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export const Route = createFileRoute("/_admin")({ component: AdminLayout });
+export const Route = createFileRoute("/admin")({ component: AdminLayout });
 
 const links = [
   { to: "/admin", label: "Overview", icon: LayoutDashboard, exact: true },
