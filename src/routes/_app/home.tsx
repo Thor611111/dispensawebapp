@@ -1,10 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/AppShell";
-import { useHouseholdId, useFoodItems, usePreferences, useExpenses, useProfile, currentWeekStart, daysUntil } from "@/lib/queries";
+import { useHouseholdId, useFoodItems, usePreferences, useExpenses, useProfile, useIsAdmin, currentWeekStart, daysUntil } from "@/lib/queries";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Loader2, Clock, Wallet, Package, ChefHat, ShoppingCart, AlertTriangle, Calendar } from "lucide-react";
+import { Sparkles, Loader2, Clock, Wallet, Package, ChefHat, ShoppingCart, AlertTriangle, Calendar, ShieldCheck } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { InstallAppCard } from "@/components/InstallAppCard";
@@ -19,6 +19,7 @@ function Home() {
   const { data: prefs } = usePreferences(hid);
   const { data: expenses = [] } = useExpenses(hid);
   const { data: profile } = useProfile();
+  const { data: isAdmin } = useIsAdmin();
   const [quick, setQuick] = useState<R[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -129,6 +130,16 @@ function Home() {
             </li>
           ))}
         </ul>
+      )}
+
+      {isAdmin && (
+        <Link to="/admin" className="mt-4 flex items-center gap-3 rounded-2xl border border-primary/30 bg-primary/5 p-3 text-sm hover:bg-primary/10 transition">
+          <ShieldCheck className="h-5 w-5 text-primary" />
+          <div className="flex-1">
+            <p className="font-medium">Admin Dashboard</p>
+            <p className="text-xs text-muted-foreground">Apri pannello di gestione</p>
+          </div>
+        </Link>
       )}
     </div>
   );

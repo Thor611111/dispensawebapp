@@ -8,11 +8,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
-import { Plus, ShoppingBag, Trash2, Sparkles, Loader2, Check, Camera, Receipt, CalendarDays } from "lucide-react";
+import { Plus, ShoppingBag, Trash2, Sparkles, Loader2, Check, Camera, Receipt, CalendarDays, AlertTriangle, CheckCircle2, HelpCircle, PackagePlus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import { reconcileReceipt, type ReceiptRow } from "@/lib/receipt-match";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/spesa")({ component: Spesa });
@@ -37,7 +39,9 @@ function Spesa() {
   const [closeOpen, setCloseOpen] = useState(false);
   const [totalAmount, setTotalAmount] = useState("");
   const [scanLoading, setScanLoading] = useState(false);
-  const [scanResult, setScanResult] = useState<{ items: any[]; total: number } | null>(null);
+  const [scanResult, setScanResult] = useState<{ items: any[]; total: number; subtotal: number | null; discounts: number | null } | null>(null);
+  const [recRows, setRecRows] = useState<ReceiptRow[]>([]);
+  const [recTotal, setRecTotal] = useState<string>("");
   const [closing, setClosing] = useState(false);
   const search = useSearch({ strict: false }) as { scan?: number | string };
   const [closeTab, setCloseTab] = useState<string>("total");
@@ -134,13 +138,28 @@ function Spesa() {
     if (!f) return;
     setScanLoading(true);
     setScanResult(null);
+    setRecRows([]);
     const b64 = await fileToBase64(f);
     const { data, error } = await supabase.functions.invoke("ai-scan-receipt", { body: { imageBase64: b64 } });
     setScanLoading(false);
     if (error || data?.error) return toast.error(error?.message ?? data?.error);
-    setScanResult({ items: data.items ?? [], total: Number(data.total ?? 0) });
-    if (!totalAmount && data.total) setTotalAmount(String(data.total));
+    const ocrItems = (data.items ?? []) as any[];
+    const total = Number(data.total ?? 0);
+    setScanResult({ items: ocrItems, total, subtotal: data.subtotal ?? null, discounts: data.discounts ?? null });
+    setRecRows(reconcileReceipt(ocrItems, items as any, effectivePantry));
+    setRecTotal(total ? String(total.toFixed(2)) : "");
+    if (!totalAmount && total) setTotalAmount(String(total));
   };
+
+  const updateRow = (key: string, patch: Partial<ReceiptRow>) => {
+    setRecRows((rows) => rows.map((r) => (r.key === key ? { ...r, ...patch } : r)));
+  };
+
+  const purchasedRows = recRows.filter((r) => r.purchased);
+  const purchasedSubtotal = purchasedRows.reduce((s, r) => s + Number(r.price ?? 0), 0);
+  const recTotalNum = Number(recTotal) || 0;
+  const totalDiff = recTotalNum - purchasedSubtotal;
+  const missingPriceCount = purchasedRows.filter((r) => r.price == null || isNaN(Number(r.price))).length;
 
   const closeWithTotal = async () => {
     if (!hid) return;
@@ -168,32 +187,36 @@ function Spesa() {
   };
 
   const closeWithScan = async () => {
-    if (!hid || !scanResult) return;
+    if (!hid || !recRows.length) return;
+    if (missingPriceCount > 0) return toast.error(`Inserisci il prezzo per ${missingPriceCount} articoli`);
+    const total = recTotalNum > 0 ? recTotalNum : purchasedSubtotal;
+    if (total <= 0) return toast.error("Totale spesa non valido");
     setClosing(true);
     const today = new Date().toISOString().slice(0, 10);
-    const checked = items.filter((i) => i.checked);
-    const usedShopping = new Set<string>();
-    const info = await classifyFoods(scanResult.items.map((si) => si.name));
-    const rows = scanResult.items.map((si) => {
-      const match = checked.find((c) => !usedShopping.has(c.id) && c.name.toLowerCase().includes(si.name.toLowerCase().slice(0, 4)));
-      if (match) usedShopping.add(match.id);
-      return enrich({
-        household_id: hid, name: si.name, quantity: si.quantity ?? 1, unit: si.unit ?? "pz",
-        location: "pantry" as const, price: si.price ?? null, pantry_id: effectivePantry,
-      }, info[si.name.toLowerCase()]);
-    });
-    if (rows.length) await supabase.from("food_items").insert(rows);
-    const total = scanResult.total || rows.reduce((s, r) => s + Number(r.price ?? 0), 0);
-    if (total > 0) await supabase.from("expenses").insert({ household_id: hid, amount: total, spent_on: today, note: "Spesa (scontrino)" });
-    if (usedShopping.size) await supabase.from("shopping_list_items").delete().in("id", Array.from(usedShopping));
+    const info = await classifyFoods(purchasedRows.map((r) => r.name));
+    const foodRows = purchasedRows.map((r) => enrich({
+      household_id: hid,
+      name: r.name,
+      quantity: r.quantity || 1,
+      unit: r.unit || "pz",
+      location: "pantry" as const,
+      price: r.price ?? null,
+      pantry_id: r.pantryId || effectivePantry,
+    }, info[r.name.toLowerCase()]));
+    if (foodRows.length) await supabase.from("food_items").insert(foodRows);
+    await supabase.from("expenses").insert({ household_id: hid, amount: total, spent_on: today, note: "Spesa (scontrino)" });
+    const usedShoppingIds = purchasedRows.map((r) => r.shopping?.id).filter(Boolean) as string[];
+    if (usedShoppingIds.length) await supabase.from("shopping_list_items").delete().in("id", usedShoppingIds);
     setClosing(false);
     setCloseOpen(false);
     setScanResult(null);
+    setRecRows([]);
+    setRecTotal("");
     setTotalAmount("");
     qc.invalidateQueries({ queryKey: ["shopping", hid] });
     qc.invalidateQueries({ queryKey: ["food", hid] });
     qc.invalidateQueries({ queryKey: ["expenses", hid] });
-    toast.success(`${rows.length} articoli aggiunti, ${total.toFixed(2)} € registrati`);
+    toast.success(`${foodRows.length} articoli in dispensa · ${total.toFixed(2)} € registrati`);
   };
 
   const total = items.filter((i) => !i.checked).reduce((s, i) => s + Number(i.estimated_price ?? 0), 0);
@@ -377,15 +400,81 @@ function Spesa() {
                 </div>
                 <input type="file" accept="image/*" capture="environment" className="hidden" onChange={onReceiptFile} disabled={scanLoading} />
               </Label>
-              {scanResult && (
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">Trovati {scanResult.items.length} articoli · totale {scanResult.total.toFixed(2)} €</p>
-                  <ul className="max-h-48 overflow-auto rounded-lg border bg-secondary/20 p-2 text-xs">
-                    {scanResult.items.map((si, i) => (
-                      <li key={i} className="flex justify-between py-0.5"><span className="truncate">{si.name}</span><span>{Number(si.price).toFixed(2)} €</span></li>
-                    ))}
+              {scanResult && recRows.length > 0 && (
+                <div className="space-y-3">
+                  <div className="rounded-lg bg-secondary/30 p-2 text-xs text-muted-foreground">
+                    OCR: {scanResult.items.length} articoli rilevati
+                    {scanResult.subtotal != null ? ` · subtot ${Number(scanResult.subtotal).toFixed(2)} €` : ""}
+                    {scanResult.discounts ? ` · sconti ${Number(scanResult.discounts).toFixed(2)} €` : ""}
+                    {scanResult.total ? ` · totale ${scanResult.total.toFixed(2)} €` : ""}
+                  </div>
+                  <ul className="max-h-[50vh] space-y-2 overflow-auto pr-1">
+                    {recRows.map((r) => {
+                      const StatusIcon = r.status === "matched" ? CheckCircle2 : r.status === "missing_from_list" ? PackagePlus : HelpCircle;
+                      const statusColor = r.status === "matched" ? "text-primary" : r.status === "missing_from_list" ? "text-amber-500" : "text-muted-foreground";
+                      const statusLabel = r.status === "matched" ? "In lista" : r.status === "missing_from_list" ? "In lista, non rilevato" : "Da confermare";
+                      return (
+                        <li key={r.key} className={`rounded-xl border p-2.5 ${r.purchased ? "bg-card" : "bg-secondary/20 opacity-80"}`}>
+                          <div className="flex items-start gap-2">
+                            <StatusIcon className={`mt-1 h-4 w-4 shrink-0 ${statusColor}`} />
+                            <div className="flex-1 min-w-0 space-y-2">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{statusLabel}</span>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs text-muted-foreground">Acquistato</span>
+                                  <Switch checked={r.purchased} onCheckedChange={(v) => updateRow(r.key, { purchased: !!v })} />
+                                </div>
+                              </div>
+                              <Input value={r.name} onChange={(e) => updateRow(r.key, { name: e.target.value })} className="h-8 text-sm" />
+                              <div className="grid grid-cols-3 gap-1.5">
+                                <Input type="number" step="0.01" placeholder="Qtà" value={r.quantity} onChange={(e) => updateRow(r.key, { quantity: Number(e.target.value) })} className="h-8 text-xs" />
+                                <Input placeholder="Unità" value={r.unit} onChange={(e) => updateRow(r.key, { unit: e.target.value })} className="h-8 text-xs" />
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="€"
+                                  value={r.price ?? ""}
+                                  onChange={(e) => updateRow(r.key, { price: e.target.value === "" ? null : Number(e.target.value) })}
+                                  className={`h-8 text-xs ${r.purchased && r.price == null ? "border-destructive" : ""}`}
+                                />
+                              </div>
+                              {r.purchased && pantries.length > 1 && (
+                                <Select value={r.pantryId ?? effectivePantry ?? ""} onValueChange={(v) => updateRow(r.key, { pantryId: v })}>
+                                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Dispensa" /></SelectTrigger>
+                                  <SelectContent>
+                                    {pantries.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                                  </SelectContent>
+                                </Select>
+                              )}
+                            </div>
+                          </div>
+                        </li>
+                      );
+                    })}
                   </ul>
-                  <Button className="w-full" onClick={closeWithScan} disabled={closing}>{closing ? "Salvataggio…" : "Aggiungi tutto in dispensa"}</Button>
+                  <div className="rounded-xl border bg-card p-3 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Articoli confermati</span>
+                      <span className="font-medium">{purchasedSubtotal.toFixed(2)} €</span>
+                    </div>
+                    <div className="mt-2 flex items-center gap-2">
+                      <Label className="text-muted-foreground">Totale scontrino</Label>
+                      <Input type="number" step="0.01" value={recTotal} onChange={(e) => setRecTotal(e.target.value)} className="h-8 flex-1" />
+                      <span className="text-xs text-muted-foreground">€</span>
+                    </div>
+                    {Math.abs(totalDiff) > 0.5 && (
+                      <p className="mt-2 flex items-start gap-1.5 text-xs text-amber-600">
+                        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                        Differenza {totalDiff > 0 ? "+" : ""}{totalDiff.toFixed(2)} € (sconti, articoli non identificati o prezzi mancanti).
+                      </p>
+                    )}
+                    {missingPriceCount > 0 && (
+                      <p className="mt-1 text-xs text-destructive">{missingPriceCount} prezzi mancanti per articoli acquistati.</p>
+                    )}
+                  </div>
+                  <Button className="w-full" onClick={closeWithScan} disabled={closing}>
+                    {closing ? "Salvataggio…" : `Conferma · ${purchasedRows.length} in dispensa · ${(recTotalNum > 0 ? recTotalNum : purchasedSubtotal).toFixed(2)} €`}
+                  </Button>
                 </div>
               )}
             </TabsContent>
