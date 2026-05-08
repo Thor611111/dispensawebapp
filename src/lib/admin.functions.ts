@@ -267,7 +267,7 @@ export const runAdminCommand = createServerFn({ method: 'POST' })
         const table = args[0]; if (!table) return { ok: false, output: 'manca tabella' }
         const allowed = ['profiles','households','recipes','food_items','shopping_list_items','expenses','meal_plans','admin_activity_log','email_send_log','push_send_log','user_roles','app_owners']
         if (!allowed.includes(table)) return { ok: false, output: 'tabella non consentita' }
-        const { count, error } = await (supabaseAdmin.from(table) as any).select('*', { count: 'exact', head: true })
+        const { count, error } = await (supabaseAdmin as any).from(table).select('*', { count: 'exact', head: true })
         if (error) return { ok: false, output: error.message }
         return { ok: true, output: `${table}: ${count}` }
       }
