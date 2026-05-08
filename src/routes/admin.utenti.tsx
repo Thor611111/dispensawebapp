@@ -1,56 +1,168 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { listAdminUsers, setUserAdminRole } from "@/lib/admin.functions";
-import { Loader2, Shield, ShieldOff } from "lucide-react";
+import {
+  listAdminUsers, setUserAdminRole,
+  adminResetPassword, adminUpdateUserEmail, adminUpdateUserName, adminDeleteUser, adminImpersonate,
+} from "@/lib/admin.functions";
+import { Loader2, MoreVertical, KeyRound, Mail as MailIcon, User as UserIcon, Trash2, UserCheck, Shield, ShieldOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth-context";
+import { useState } from "react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/admin/utenti")({ component: Page });
+
+type Action = null | { kind: "email" | "name"; user: any } | { kind: "delete"; user: any } | { kind: "impersonate"; url: string };
 
 function Page() {
   const { session } = useAuth();
   const accessToken = session?.access_token;
-  const fn = useServerFn(listAdminUsers);
-  const setRole = useServerFn(setUserAdminRole);
   const qc = useQueryClient();
+  const list = useServerFn(listAdminUsers);
+  const setRole = useServerFn(setUserAdminRole);
+  const reset = useServerFn(adminResetPassword);
+  const setEmail = useServerFn(adminUpdateUserEmail);
+  const setName = useServerFn(adminUpdateUserName);
+  const del = useServerFn(adminDeleteUser);
+  const impersonate = useServerFn(adminImpersonate);
+
+  const [filter, setFilter] = useState("");
+  const [action, setAction] = useState<Action>(null);
+  const [val, setVal] = useState("");
+
   const { data = [], isLoading, error } = useQuery({
     queryKey: ["admin-users"],
     enabled: !!accessToken,
-    queryFn: () => fn({ data: { accessToken: accessToken! } }),
+    queryFn: () => list({ data: { accessToken: accessToken! } }),
   });
-  const m = useMutation({
-    mutationFn: (v: { userId: string; grant: boolean }) => {
-      if (!accessToken) throw new Error("Sessione non disponibile");
-      return setRole({ data: { ...v, accessToken } });
-    },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["admin-users"] }); toast.success("Ruolo aggiornato"); },
-    onError: (e: any) => toast.error(e?.message ?? "Errore"),
-  });
+
+  const refresh = () => qc.invalidateQueries({ queryKey: ["admin-users"] });
+  const wrap = <T,>(p: Promise<T>, ok: string) => p.then(() => { toast.success(ok); refresh(); }).catch((e) => toast.error(e?.message ?? "Errore"));
+
+  const mRole = useMutation({ mutationFn: (v: { userId: string; grant: boolean }) => setRole({ data: { ...v, accessToken: accessToken! } }), onSuccess: () => { refresh(); toast.success("Ruolo aggiornato"); }, onError: (e: any) => toast.error(e?.message) });
+
   if (isLoading) return <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin" /></div>;
   if (error) return <div className="rounded-2xl border bg-card p-4 text-sm text-destructive">{error.message}</div>;
+
+  const rows = (data as any[]).filter((u) => !filter || u.email?.toLowerCase().includes(filter.toLowerCase()) || u.display_name?.toLowerCase().includes(filter.toLowerCase()));
+
   return (
-    <div className="overflow-hidden rounded-2xl border bg-card">
-      <table className="w-full text-sm">
-        <thead className="bg-secondary/50 text-xs"><tr>
-          <th className="px-3 py-2 text-left">Email</th><th className="px-3 py-2 text-left">Nome</th>
-          <th className="px-3 py-2 text-left">Registrato</th><th className="px-3 py-2 text-left">Admin</th><th></th>
-        </tr></thead>
-        <tbody>{(data as any[]).map((u) => (
-          <tr key={u.id} className="border-t">
-            <td className="px-3 py-2">{u.email}</td>
-            <td className="px-3 py-2">{u.display_name ?? "—"}</td>
-            <td className="px-3 py-2 text-xs text-muted-foreground">{new Date(u.created_at).toLocaleDateString("it-IT")}</td>
-            <td className="px-3 py-2">{u.is_admin ? "✅" : ""}</td>
-            <td className="px-3 py-2">
-              <Button size="sm" variant="outline" onClick={() => m.mutate({ userId: u.id, grant: !u.is_admin })} disabled={m.isPending}>
-                {u.is_admin ? <><ShieldOff className="h-3 w-3" /> Revoca</> : <><Shield className="h-3 w-3" /> Promuovi</>}
-              </Button>
-            </td>
-          </tr>
-        ))}</tbody>
-      </table>
+    <div className="space-y-3">
+      <Input placeholder="Filtra per email o nome…" value={filter} onChange={(e) => setFilter(e.target.value)} />
+      <div className="overflow-hidden rounded-2xl border bg-card">
+        <table className="w-full text-sm">
+          <thead className="bg-secondary/50 text-xs"><tr>
+            <th className="px-3 py-2 text-left">Email</th><th className="px-3 py-2 text-left">Nome</th>
+            <th className="px-3 py-2 text-left">Registrato</th><th className="px-3 py-2 text-left">Ultimo login</th>
+            <th className="px-3 py-2 text-left">Ruolo</th><th></th>
+          </tr></thead>
+          <tbody>{rows.map((u) => (
+            <tr key={u.id} className="border-t">
+              <td className="px-3 py-2">{u.email}</td>
+              <td className="px-3 py-2">{u.display_name ?? "—"}</td>
+              <td className="px-3 py-2 text-xs text-muted-foreground">{new Date(u.created_at).toLocaleDateString("it-IT")}</td>
+              <td className="px-3 py-2 text-xs text-muted-foreground">{u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleDateString("it-IT") : "—"}</td>
+              <td className="px-3 py-2 text-xs">{u.is_owner ? "👑 Owner" : u.is_admin ? "🛡 Admin" : ""}</td>
+              <td className="px-3 py-2 text-right">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild><Button size="sm" variant="ghost"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuItem onClick={() => wrap(reset({ data: { accessToken: accessToken!, email: u.email } }), "Email di recupero inviata")}>
+                      <KeyRound className="h-3.5 w-3.5" /> Reset password (email)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => { setVal(u.email); setAction({ kind: "email", user: u }); }}>
+                      <MailIcon className="h-3.5 w-3.5" /> Cambia email
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => { setVal(u.display_name ?? ""); setAction({ kind: "name", user: u }); }}>
+                      <UserIcon className="h-3.5 w-3.5" /> Cambia nome
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={async () => {
+                      try {
+                        const r: any = await impersonate({ data: { accessToken: accessToken!, userId: u.id } });
+                        setAction({ kind: "impersonate", url: r.url });
+                      } catch (e: any) { toast.error(e?.message); }
+                    }}>
+                      <UserCheck className="h-3.5 w-3.5" /> Impersonifica
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    {u.is_owner ? null : (
+                      <DropdownMenuItem onClick={() => mRole.mutate({ userId: u.id, grant: !u.is_admin })}>
+                        {u.is_admin ? <><ShieldOff className="h-3.5 w-3.5" /> Revoca admin</> : <><Shield className="h-3.5 w-3.5" /> Promuovi admin</>}
+                      </DropdownMenuItem>
+                    )}
+                    {u.is_owner ? null : (
+                      <DropdownMenuItem className="text-destructive" onClick={() => setAction({ kind: "delete", user: u })}>
+                        <Trash2 className="h-3.5 w-3.5" /> Elimina account
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </td>
+            </tr>
+          ))}</tbody>
+        </table>
+      </div>
+
+      <Dialog open={action?.kind === "email" || action?.kind === "name"} onOpenChange={(o) => !o && setAction(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{action?.kind === "email" ? "Cambia email" : "Cambia nome"}</DialogTitle>
+            <DialogDescription>{action && "user" in action ? action.user.email : ""}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label>{action?.kind === "email" ? "Nuova email" : "Nuovo nome"}</Label>
+            <Input value={val} onChange={(e) => setVal(e.target.value)} />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAction(null)}>Annulla</Button>
+            <Button onClick={async () => {
+              if (!action || !("user" in action)) return;
+              try {
+                if (action.kind === "email") await setEmail({ data: { accessToken: accessToken!, userId: action.user.id, email: val } });
+                else await setName({ data: { accessToken: accessToken!, userId: action.user.id, name: val } });
+                toast.success("Aggiornato"); refresh(); setAction(null);
+              } catch (e: any) { toast.error(e?.message); }
+            }}>Conferma</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={action?.kind === "delete"} onOpenChange={(o) => !o && setAction(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminare {action?.kind === "delete" ? action.user.email : ""}?</AlertDialogTitle>
+            <AlertDialogDescription>Questa azione è irreversibile e cancella tutti i dati dell'utente.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction onClick={async () => {
+              if (action?.kind !== "delete") return;
+              try { await del({ data: { accessToken: accessToken!, userId: action.user.id } }); toast.success("Eliminato"); refresh(); setAction(null); }
+              catch (e: any) { toast.error(e?.message); }
+            }}>Elimina per sempre</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Dialog open={action?.kind === "impersonate"} onOpenChange={(o) => !o && setAction(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Link di impersonificazione</DialogTitle>
+            <DialogDescription>Apri questo link in una finestra in incognito per non perdere la sessione owner.</DialogDescription>
+          </DialogHeader>
+          <textarea readOnly className="h-32 w-full rounded border bg-muted p-2 text-xs" value={action?.kind === "impersonate" ? action.url : ""} />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAction(null)}>Chiudi</Button>
+            <Button onClick={() => { if (action?.kind === "impersonate") { navigator.clipboard.writeText(action.url); toast.success("Copiato"); } }}>Copia link</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
