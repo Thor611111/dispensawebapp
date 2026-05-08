@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/PasswordInput";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/reset-password")({
@@ -54,11 +55,11 @@ function ResetPasswordPage() {
         <form onSubmit={submit} className="mt-6 space-y-3">
           <div className="space-y-1.5">
             <Label htmlFor="password">Nuova password</Label>
-            <Input id="password" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
+            <PasswordInput id="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="confirm">Conferma password</Label>
-            <Input id="confirm" type="password" required minLength={6} value={confirm} onChange={(e) => setConfirm(e.target.value)} />
+            <PasswordInput id="confirm" required minLength={6} value={confirm} onChange={(e) => setConfirm(e.target.value)} />
           </div>
           <Button type="submit" className="w-full" disabled={loading || !ready}>
             {loading ? "Aggiornamento…" : "Aggiorna password"}
