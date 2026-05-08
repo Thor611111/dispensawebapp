@@ -7,7 +7,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
 
   try {
-    const { foodItems, preferences, count = 5, likes = [], dislikes = [], filters = {} } = await req.json();
+    const { foodItems, preferences, count = 5, likes = [], dislikes = [], filters = {}, slotsPlan = [], recentTitles = [] } = await req.json();
     const apiKey = Deno.env.get("LOVABLE_API_KEY");
     if (!apiKey) throw new Error("LOVABLE_API_KEY missing");
 
@@ -24,13 +24,20 @@ Deno.serve(async (req) => {
       else tags.push("mai usato");
       return `- ${f.name} (${f.quantity}${f.unit}${tags.length ? `, ${tags.join(", ")}` : ""})`;
     };
-    const ctx = `Dispensa attuale:\n${(foodItems ?? []).map(fmtFood).join("\n") || "(vuota)"}\n\nPreferenze:\n- Persone: ${preferences?.household_size ?? 2}\n- Diete: ${(preferences?.diets ?? []).join(", ") || "nessuna"}\n- Allergie: ${(preferences?.allergies ?? []).join(", ") || "nessuna"}\n- Obiettivi: ${(preferences?.goals ?? []).join(", ") || "—"}\n- Budget settimanale: ${preferences?.weekly_budget ?? "non impostato"} EUR\n- Ricette gradite (proponi simili): ${likes.join(", ") || "—"}\n- Ricette NON gradite (EVITA assolutamente piatti simili): ${dislikes.join(", ") || "—"}\n\nPriorità: prima gli alimenti in scadenza, poi quelli mai usati o non usati da tempo.${filterLines.length ? `\n\nFiltri OBBLIGATORI:\n${filterLines.join("\n")}` : ""}`;
+    const today = new Date();
+    const m = today.getMonth();
+    const season = m <= 1 || m === 11 ? "inverno" : m <= 4 ? "primavera" : m <= 7 ? "estate" : "autunno";
+    const slotPlanLines = (slotsPlan as any[]).map((s, i) =>
+      `${i + 1}. ${s.date} (${s.dayName}) — ${s.slot}${s.weekend ? " [weekend: piatto più curato]" : ""}`
+    ).join("\n");
+    const targetCount = (slotsPlan as any[]).length || count;
+    const ctx = `Data odierna: ${today.toISOString().slice(0,10)} · Stagione: ${season}\n\nDispensa attuale:\n${(foodItems ?? []).map(fmtFood).join("\n") || "(vuota)"}\n\nPreferenze:\n- Persone: ${preferences?.household_size ?? 2}\n- Diete: ${(preferences?.diets ?? []).join(", ") || "nessuna"}\n- Allergie: ${(preferences?.allergies ?? []).join(", ") || "nessuna"}\n- Obiettivi: ${(preferences?.goals ?? []).join(", ") || "—"}\n- Budget settimanale: ${preferences?.weekly_budget ?? "non impostato"} EUR\n- Ricette gradite (proponi simili): ${likes.join(", ") || "—"}\n- Ricette NON gradite (EVITA assolutamente piatti simili): ${dislikes.join(", ") || "—"}\n- Ricette già proposte di recente (NON ripetere): ${recentTitles.join(", ") || "—"}\n\nPriorità: prima gli alimenti in scadenza, poi quelli mai usati o non usati da tempo.${filterLines.length ? `\n\nFiltri OBBLIGATORI:\n${filterLines.join("\n")}` : ""}${slotPlanLines ? `\n\nDevi proporre ESATTAMENTE ${targetCount} ricette, una per ciascuno di questi slot in ordine. Compila SEMPRE il campo assigned_to con date e slot esatti:\n${slotPlanLines}\n\nRegole:\n- Colazione: dolce o salata leggera, veloce.\n- Pranzo: piatto unico/primo nutriente.\n- Cena: più leggera, secondo+contorno o zuppa.\n- Spuntino: snack semplice.\n- Alterna proteine (carne, pesce, legumi, uova, vegetariano) e tipologie (pasta, riso, zuppa, insalata, secondo+contorno).\n- Rispetta la stagione (${season}) con ingredienti tipici italiani di stagione.\n- NON ripetere ricette tra gli slot.` : ""}`;
 
     const body = {
       model: "google/gemini-3-flash-preview",
       messages: [
-        { role: "system", content: "Sei uno chef italiano che propone ricette pratiche. Privilegia ingredienti già disponibili e quelli in scadenza. Rispetta diete/allergie. Tempo, costo e difficoltà realistici." },
-        { role: "user", content: `Proponi ${count} ricette diverse. Spiega in 'reason' perché la suggerisci (es: usa X che scade, basso costo, veloce).\n\n${ctx}` },
+        { role: "system", content: "Sei uno chef italiano che propone ricette pratiche, stagionali e variate. Privilegia ingredienti già disponibili e quelli in scadenza. Rispetta diete/allergie. Tempo, costo e difficoltà realistici." },
+        { role: "user", content: `Proponi ${targetCount} ricette diverse. Spiega in 'reason' perché la suggerisci (es: usa X che scade, basso costo, veloce, adatta a ${season}).\n\n${ctx}` },
       ],
       tools: [
         {
@@ -53,6 +60,13 @@ Deno.serve(async (req) => {
                       difficulty: { type: "string", enum: ["facile", "media", "difficile"] },
                       estimated_cost: { type: "number" },
                       servings: { type: "integer" },
+                      assigned_to: {
+                        type: "object",
+                        properties: {
+                          date: { type: "string", description: "YYYY-MM-DD" },
+                          slot: { type: "string", enum: ["breakfast", "lunch", "dinner", "snack"] },
+                        },
+                      },
                       ingredients: {
                         type: "array",
                         items: {
