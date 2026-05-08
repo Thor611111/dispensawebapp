@@ -8,11 +8,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
-import { Plus, ShoppingBag, Trash2, Sparkles, Loader2, Check, Camera, Receipt, CalendarDays } from "lucide-react";
+import { Plus, ShoppingBag, Trash2, Sparkles, Loader2, Check, Camera, Receipt, CalendarDays, AlertTriangle, CheckCircle2, HelpCircle, PackagePlus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import { reconcileReceipt, type ReceiptRow } from "@/lib/receipt-match";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/spesa")({ component: Spesa });
@@ -37,7 +39,9 @@ function Spesa() {
   const [closeOpen, setCloseOpen] = useState(false);
   const [totalAmount, setTotalAmount] = useState("");
   const [scanLoading, setScanLoading] = useState(false);
-  const [scanResult, setScanResult] = useState<{ items: any[]; total: number } | null>(null);
+  const [scanResult, setScanResult] = useState<{ items: any[]; total: number; subtotal: number | null; discounts: number | null } | null>(null);
+  const [recRows, setRecRows] = useState<ReceiptRow[]>([]);
+  const [recTotal, setRecTotal] = useState<string>("");
   const [closing, setClosing] = useState(false);
   const search = useSearch({ strict: false }) as { scan?: number | string };
   const [closeTab, setCloseTab] = useState<string>("total");
@@ -134,13 +138,28 @@ function Spesa() {
     if (!f) return;
     setScanLoading(true);
     setScanResult(null);
+    setRecRows([]);
     const b64 = await fileToBase64(f);
     const { data, error } = await supabase.functions.invoke("ai-scan-receipt", { body: { imageBase64: b64 } });
     setScanLoading(false);
     if (error || data?.error) return toast.error(error?.message ?? data?.error);
-    setScanResult({ items: data.items ?? [], total: Number(data.total ?? 0) });
-    if (!totalAmount && data.total) setTotalAmount(String(data.total));
+    const ocrItems = (data.items ?? []) as any[];
+    const total = Number(data.total ?? 0);
+    setScanResult({ items: ocrItems, total, subtotal: data.subtotal ?? null, discounts: data.discounts ?? null });
+    setRecRows(reconcileReceipt(ocrItems, items as any, effectivePantry));
+    setRecTotal(total ? String(total.toFixed(2)) : "");
+    if (!totalAmount && total) setTotalAmount(String(total));
   };
+
+  const updateRow = (key: string, patch: Partial<ReceiptRow>) => {
+    setRecRows((rows) => rows.map((r) => (r.key === key ? { ...r, ...patch } : r)));
+  };
+
+  const purchasedRows = recRows.filter((r) => r.purchased);
+  const purchasedSubtotal = purchasedRows.reduce((s, r) => s + Number(r.price ?? 0), 0);
+  const recTotalNum = Number(recTotal) || 0;
+  const totalDiff = recTotalNum - purchasedSubtotal;
+  const missingPriceCount = purchasedRows.filter((r) => r.price == null || isNaN(Number(r.price))).length;
 
   const closeWithTotal = async () => {
     if (!hid) return;
@@ -168,32 +187,36 @@ function Spesa() {
   };
 
   const closeWithScan = async () => {
-    if (!hid || !scanResult) return;
+    if (!hid || !recRows.length) return;
+    if (missingPriceCount > 0) return toast.error(`Inserisci il prezzo per ${missingPriceCount} articoli`);
+    const total = recTotalNum > 0 ? recTotalNum : purchasedSubtotal;
+    if (total <= 0) return toast.error("Totale spesa non valido");
     setClosing(true);
     const today = new Date().toISOString().slice(0, 10);
-    const checked = items.filter((i) => i.checked);
-    const usedShopping = new Set<string>();
-    const info = await classifyFoods(scanResult.items.map((si) => si.name));
-    const rows = scanResult.items.map((si) => {
-      const match = checked.find((c) => !usedShopping.has(c.id) && c.name.toLowerCase().includes(si.name.toLowerCase().slice(0, 4)));
-      if (match) usedShopping.add(match.id);
-      return enrich({
-        household_id: hid, name: si.name, quantity: si.quantity ?? 1, unit: si.unit ?? "pz",
-        location: "pantry" as const, price: si.price ?? null, pantry_id: effectivePantry,
-      }, info[si.name.toLowerCase()]);
-    });
-    if (rows.length) await supabase.from("food_items").insert(rows);
-    const total = scanResult.total || rows.reduce((s, r) => s + Number(r.price ?? 0), 0);
-    if (total > 0) await supabase.from("expenses").insert({ household_id: hid, amount: total, spent_on: today, note: "Spesa (scontrino)" });
-    if (usedShopping.size) await supabase.from("shopping_list_items").delete().in("id", Array.from(usedShopping));
+    const info = await classifyFoods(purchasedRows.map((r) => r.name));
+    const foodRows = purchasedRows.map((r) => enrich({
+      household_id: hid,
+      name: r.name,
+      quantity: r.quantity || 1,
+      unit: r.unit || "pz",
+      location: "pantry" as const,
+      price: r.price ?? null,
+      pantry_id: r.pantryId || effectivePantry,
+    }, info[r.name.toLowerCase()]));
+    if (foodRows.length) await supabase.from("food_items").insert(foodRows);
+    await supabase.from("expenses").insert({ household_id: hid, amount: total, spent_on: today, note: "Spesa (scontrino)" });
+    const usedShoppingIds = purchasedRows.map((r) => r.shopping?.id).filter(Boolean) as string[];
+    if (usedShoppingIds.length) await supabase.from("shopping_list_items").delete().in("id", usedShoppingIds);
     setClosing(false);
     setCloseOpen(false);
     setScanResult(null);
+    setRecRows([]);
+    setRecTotal("");
     setTotalAmount("");
     qc.invalidateQueries({ queryKey: ["shopping", hid] });
     qc.invalidateQueries({ queryKey: ["food", hid] });
     qc.invalidateQueries({ queryKey: ["expenses", hid] });
-    toast.success(`${rows.length} articoli aggiunti, ${total.toFixed(2)} € registrati`);
+    toast.success(`${foodRows.length} articoli in dispensa · ${total.toFixed(2)} € registrati`);
   };
 
   const total = items.filter((i) => !i.checked).reduce((s, i) => s + Number(i.estimated_price ?? 0), 0);
