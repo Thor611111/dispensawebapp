@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Sparkles, Package, ChefHat, Wallet } from "lucide-react";
+import { InstallAppCard } from "@/components/InstallAppCard";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -45,6 +46,9 @@ function Index() {
             <Button asChild size="lg" variant="outline" className="w-full sm:w-auto">
               <Link to="/login">Ho già un account</Link>
             </Button>
+          </div>
+          <div className="mt-6 flex justify-center">
+            <InstallAppCard variant="inline" />
           </div>
         </section>
 
