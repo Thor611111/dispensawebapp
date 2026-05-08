@@ -15,6 +15,7 @@ import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as JoinCodeRouteImport } from './routes/join.$code'
 import { Route as AppSpesaRouteImport } from './routes/_app/spesa'
 import { Route as AppRicetteRouteImport } from './routes/_app/ricette'
 import { Route as AppPianoRouteImport } from './routes/_app/piano'
@@ -26,6 +27,8 @@ import { Route as AppImpostazioniSicurezzaRouteImport } from './routes/_app/impo
 import { Route as AppImpostazioniScadenzeRouteImport } from './routes/_app/impostazioni.scadenze'
 import { Route as AppImpostazioniProfiloRouteImport } from './routes/_app/impostazioni.profilo'
 import { Route as AppImpostazioniPreferenzeRouteImport } from './routes/_app/impostazioni.preferenze'
+import { Route as AppImpostazioniNotificheRouteImport } from './routes/_app/impostazioni.notifiche'
+import { Route as AppImpostazioniCasaRouteImport } from './routes/_app/impostazioni.casa'
 import { Route as AppDispensaAggiungiRouteImport } from './routes/_app/dispensa.aggiungi'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
@@ -58,6 +61,11 @@ const AppRoute = AppRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JoinCodeRoute = JoinCodeRouteImport.update({
+  id: '/join/$code',
+  path: '/join/$code',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppSpesaRoute = AppSpesaRouteImport.update({
@@ -117,6 +125,17 @@ const AppImpostazioniPreferenzeRoute =
     path: '/preferenze',
     getParentRoute: () => AppImpostazioniRoute,
   } as any)
+const AppImpostazioniNotificheRoute =
+  AppImpostazioniNotificheRouteImport.update({
+    id: '/notifiche',
+    path: '/notifiche',
+    getParentRoute: () => AppImpostazioniRoute,
+  } as any)
+const AppImpostazioniCasaRoute = AppImpostazioniCasaRouteImport.update({
+  id: '/casa',
+  path: '/casa',
+  getParentRoute: () => AppImpostazioniRoute,
+} as any)
 const AppDispensaAggiungiRoute = AppDispensaAggiungiRouteImport.update({
   id: '/aggiungi',
   path: '/aggiungi',
@@ -151,7 +170,10 @@ export interface FileRoutesByFullPath {
   '/piano': typeof AppPianoRoute
   '/ricette': typeof AppRicetteRouteWithChildren
   '/spesa': typeof AppSpesaRoute
+  '/join/$code': typeof JoinCodeRoute
   '/dispensa/aggiungi': typeof AppDispensaAggiungiRoute
+  '/impostazioni/casa': typeof AppImpostazioniCasaRoute
+  '/impostazioni/notifiche': typeof AppImpostazioniNotificheRoute
   '/impostazioni/preferenze': typeof AppImpostazioniPreferenzeRoute
   '/impostazioni/profilo': typeof AppImpostazioniProfiloRoute
   '/impostazioni/scadenze': typeof AppImpostazioniScadenzeRoute
@@ -173,7 +195,10 @@ export interface FileRoutesByTo {
   '/piano': typeof AppPianoRoute
   '/ricette': typeof AppRicetteRouteWithChildren
   '/spesa': typeof AppSpesaRoute
+  '/join/$code': typeof JoinCodeRoute
   '/dispensa/aggiungi': typeof AppDispensaAggiungiRoute
+  '/impostazioni/casa': typeof AppImpostazioniCasaRoute
+  '/impostazioni/notifiche': typeof AppImpostazioniNotificheRoute
   '/impostazioni/preferenze': typeof AppImpostazioniPreferenzeRoute
   '/impostazioni/profilo': typeof AppImpostazioniProfiloRoute
   '/impostazioni/scadenze': typeof AppImpostazioniScadenzeRoute
@@ -197,7 +222,10 @@ export interface FileRoutesById {
   '/_app/piano': typeof AppPianoRoute
   '/_app/ricette': typeof AppRicetteRouteWithChildren
   '/_app/spesa': typeof AppSpesaRoute
+  '/join/$code': typeof JoinCodeRoute
   '/_app/dispensa/aggiungi': typeof AppDispensaAggiungiRoute
+  '/_app/impostazioni/casa': typeof AppImpostazioniCasaRoute
+  '/_app/impostazioni/notifiche': typeof AppImpostazioniNotificheRoute
   '/_app/impostazioni/preferenze': typeof AppImpostazioniPreferenzeRoute
   '/_app/impostazioni/profilo': typeof AppImpostazioniProfiloRoute
   '/_app/impostazioni/scadenze': typeof AppImpostazioniScadenzeRoute
@@ -221,7 +249,10 @@ export interface FileRouteTypes {
     | '/piano'
     | '/ricette'
     | '/spesa'
+    | '/join/$code'
     | '/dispensa/aggiungi'
+    | '/impostazioni/casa'
+    | '/impostazioni/notifiche'
     | '/impostazioni/preferenze'
     | '/impostazioni/profilo'
     | '/impostazioni/scadenze'
@@ -243,7 +274,10 @@ export interface FileRouteTypes {
     | '/piano'
     | '/ricette'
     | '/spesa'
+    | '/join/$code'
     | '/dispensa/aggiungi'
+    | '/impostazioni/casa'
+    | '/impostazioni/notifiche'
     | '/impostazioni/preferenze'
     | '/impostazioni/profilo'
     | '/impostazioni/scadenze'
@@ -266,7 +300,10 @@ export interface FileRouteTypes {
     | '/_app/piano'
     | '/_app/ricette'
     | '/_app/spesa'
+    | '/join/$code'
     | '/_app/dispensa/aggiungi'
+    | '/_app/impostazioni/casa'
+    | '/_app/impostazioni/notifiche'
     | '/_app/impostazioni/preferenze'
     | '/_app/impostazioni/profilo'
     | '/_app/impostazioni/scadenze'
@@ -284,6 +321,7 @@ export interface RootRouteChildren {
   OnboardingRoute: typeof OnboardingRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
+  JoinCodeRoute: typeof JoinCodeRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
   LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
   LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
@@ -331,6 +369,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/join/$code': {
+      id: '/join/$code'
+      path: '/join/$code'
+      fullPath: '/join/$code'
+      preLoaderRoute: typeof JoinCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/spesa': {
@@ -410,6 +455,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppImpostazioniPreferenzeRouteImport
       parentRoute: typeof AppImpostazioniRoute
     }
+    '/_app/impostazioni/notifiche': {
+      id: '/_app/impostazioni/notifiche'
+      path: '/notifiche'
+      fullPath: '/impostazioni/notifiche'
+      preLoaderRoute: typeof AppImpostazioniNotificheRouteImport
+      parentRoute: typeof AppImpostazioniRoute
+    }
+    '/_app/impostazioni/casa': {
+      id: '/_app/impostazioni/casa'
+      path: '/casa'
+      fullPath: '/impostazioni/casa'
+      preLoaderRoute: typeof AppImpostazioniCasaRouteImport
+      parentRoute: typeof AppImpostazioniRoute
+    }
     '/_app/dispensa/aggiungi': {
       id: '/_app/dispensa/aggiungi'
       path: '/aggiungi'
@@ -454,6 +513,8 @@ const AppDispensaRouteWithChildren = AppDispensaRoute._addFileChildren(
 )
 
 interface AppImpostazioniRouteChildren {
+  AppImpostazioniCasaRoute: typeof AppImpostazioniCasaRoute
+  AppImpostazioniNotificheRoute: typeof AppImpostazioniNotificheRoute
   AppImpostazioniPreferenzeRoute: typeof AppImpostazioniPreferenzeRoute
   AppImpostazioniProfiloRoute: typeof AppImpostazioniProfiloRoute
   AppImpostazioniScadenzeRoute: typeof AppImpostazioniScadenzeRoute
@@ -461,6 +522,8 @@ interface AppImpostazioniRouteChildren {
 }
 
 const AppImpostazioniRouteChildren: AppImpostazioniRouteChildren = {
+  AppImpostazioniCasaRoute: AppImpostazioniCasaRoute,
+  AppImpostazioniNotificheRoute: AppImpostazioniNotificheRoute,
   AppImpostazioniPreferenzeRoute: AppImpostazioniPreferenzeRoute,
   AppImpostazioniProfiloRoute: AppImpostazioniProfiloRoute,
   AppImpostazioniScadenzeRoute: AppImpostazioniScadenzeRoute,
@@ -510,6 +573,7 @@ const rootRouteChildren: RootRouteChildren = {
   OnboardingRoute: OnboardingRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
+  JoinCodeRoute: JoinCodeRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
   LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
   LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,

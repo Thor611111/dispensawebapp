@@ -1,13 +1,13 @@
-import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, Link, Outlet, useLocation, useSearch } from "@tanstack/react-router";
+import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useHouseholdId, useFoodItems, usePantries, daysUntil } from "@/lib/queries";
+import { useHouseholdId, useFoodItems, usePantries, usePreferences, daysUntil } from "@/lib/queries";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Trash2, Refrigerator, Snowflake, Package2, Box, Trash } from "lucide-react";
+import { Plus, Trash2, Refrigerator, Snowflake, Package2, Box, Trash, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -15,7 +15,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 
-export const Route = createFileRoute("/_app/dispensa")({ component: Dispensa });
+export const Route = createFileRoute("/_app/dispensa")({
+  component: Dispensa,
+  validateSearch: (s: Record<string, unknown>) => ({ filter: typeof s.filter === "string" ? s.filter : undefined }),
+});
 
 const LOCS = [
   { v: "all", l: "Tutto", icon: Box },
@@ -29,16 +32,27 @@ function Dispensa() {
   const { data: hid } = useHouseholdId();
   const { data: items = [], isLoading } = useFoodItems(hid);
   const { data: pantries = [] } = usePantries(hid);
+  const { data: prefs } = usePreferences(hid);
   const qc = useQueryClient();
   const [filter, setFilter] = useState<string>("all");
   const [activePantry, setActivePantry] = useState<string>("all");
+  const [expiringOnly, setExpiringOnly] = useState(false);
   const [newPantryName, setNewPantryName] = useState("");
   const [openPantryDialog, setOpenPantryDialog] = useState(false);
+  const search = useSearch({ from: "/_app/dispensa" });
+
+  useEffect(() => {
+    if (search.filter === "expiring") setExpiringOnly(true);
+  }, [search.filter]);
 
   if (location.pathname !== "/dispensa") return <Outlet />;
 
+  const warnDays = (prefs as any)?.expiry_warning_days ?? 3;
+
   const byPantry = activePantry === "all" ? items : items.filter((i) => (i.pantry_id ?? "default") === activePantry);
-  const filtered = filter === "all" ? byPantry : byPantry.filter((i) => i.location === filter);
+  let filtered = filter === "all" ? byPantry : byPantry.filter((i) => i.location === filter);
+  if (expiringOnly) filtered = filtered.filter((i) => { const d = daysUntil(i.expires_on); return d !== null && d <= warnDays; })
+    .sort((a, b) => (daysUntil(a.expires_on) ?? 0) - (daysUntil(b.expires_on) ?? 0));
   const totalKcal = filtered.reduce((s, i) => s + (Number(i.kcal_per_unit ?? 0) * Number(i.quantity ?? 0)), 0);
 
   const remove = async (id: string) => {
@@ -78,6 +92,13 @@ function Dispensa() {
           </Button>
         }
       />
+
+      <div className="mb-3 flex gap-2">
+        <Button size="sm" variant={!expiringOnly ? "default" : "outline"} onClick={() => setExpiringOnly(false)}>Tutto</Button>
+        <Button size="sm" variant={expiringOnly ? "destructive" : "outline"} onClick={() => setExpiringOnly(true)}>
+          <AlertTriangle className="h-4 w-4" /> In scadenza ({items.filter((i) => { const d = daysUntil(i.expires_on); return d !== null && d <= warnDays; }).length})
+        </Button>
+      </div>
 
       {pantries.length > 0 && (
         <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
