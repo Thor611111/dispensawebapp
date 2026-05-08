@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Sparkles, Loader2, Clock, Wallet, Package, ChefHat, ShoppingCart, AlertTriangle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
+import { InstallAppCard } from "@/components/InstallAppCard";
 
 export const Route = createFileRoute("/_app/home")({ component: Home });
 
@@ -55,6 +56,8 @@ function Home() {
   return (
     <div>
       <PageHeader title="Ciao 👋" subtitle={monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1)} />
+
+      <InstallAppCard variant="banner" dismissible />
 
       <div className="mb-4 rounded-2xl border bg-card p-5">
         <div className="flex items-center justify-between">

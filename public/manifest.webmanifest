@@ -2,6 +2,8 @@
   "name": "PantryAI — Dispensa & Pasti",
   "short_name": "PantryAI",
   "description": "Gestione intelligente di dispensa, ricette, piano pasti e budget.",
+  "id": "/",
+  "scope": "/",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#fbf8f0",

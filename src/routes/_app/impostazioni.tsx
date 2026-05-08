@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { LogOut, Trash2 } from "lucide-react";
+import { InstallAppCard } from "@/components/InstallAppCard";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -106,6 +107,8 @@ function Impostazioni() {
   return (
     <div>
       <PageHeader title="Profilo" subtitle={user?.email ?? ""} />
+
+      <InstallAppCard />
 
       <div className="mb-6 grid grid-cols-2 gap-3">
         <div className="rounded-xl border bg-card p-4">
