@@ -63,7 +63,8 @@ function ImpostazioniIndex() {
     { to: "/impostazioni/notifiche", label: "Notifiche", desc: "Promemoria e canali", icon: Bell },
     { to: "/impostazioni/casa", label: "Casa & membri", desc: "Condividi il nucleo", icon: HomeIcon },
     { to: "/impostazioni/sicurezza", label: "Password e sicurezza", desc: "Cambia password", icon: KeyRound },
-  ] as const;
+    ...(isAdmin ? [{ to: "/admin" as const, label: "Admin Dashboard", desc: "Gestione app", icon: ShieldCheck }] : []),
+  ];
 
   return (
     <div>
