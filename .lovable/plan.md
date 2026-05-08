@@ -1,70 +1,24 @@
+## Diagnosi
 
-# Piano: Notifiche automatiche, Dashboard admin, Bug check, Export
+Il dev server era bloccato su una cache di route stantia che riferiva un file fantasma `_admin.index.tsx` (mai esistito su disco). Il file reale è `admin.index.tsx` (senza underscore) e non c'è alcun conflitto effettivo nei file sorgente:
 
-## 1. Invio automatico notifiche (1×/giorno)
+```
+src/routes/index.tsx        → /
+src/routes/admin.tsx        → /admin (layout)
+src/routes/admin.index.tsx  → /admin (figlio del layout)
+src/routes/admin.utenti.tsx → /admin/utenti
+src/routes/admin.log-email.tsx → /admin/log-email
+```
 
-**Backend**
-- Nuova tabella `user_roles` con enum `app_role` (`admin`, `user`) + funzione `has_role(uuid, app_role)` SECURITY DEFINER (pattern standard, no recursion).
-- Server route `src/routes/api/public/hooks/daily-notifications.ts`:
-  - Auth via header `apikey` (anon key) — pattern canonico pg_cron.
-  - Per ogni household con `notification_preferences.daily_send_hour == ora corrente UTC`:
-    - Calcola alimenti in scadenza (≤ `expiry_warning_days`).
-    - Calcola pasti pianificati per oggi/domani.
-    - Calcola lista spesa pendente.
-    - Per ogni membro:
-      - Se `push_enabled` e ha `push_subscriptions` → invia Web Push (richiede `VAPID_PUBLIC_KEY` + `VAPID_PRIVATE_KEY` come secrets, libreria `web-push` compatibile Worker).
-      - Se `email_enabled` → enqueue email transazionale via `enqueue_email`.
-- Cron `pg_cron` ogni ora (`0 * * * *`) che chiama l'endpoint con body `{}`.
+Dopo il riavvio del dev server, il rigeneratore ha ricostruito correttamente `routeTree.gen.ts` e l'endpoint `/` risponde 200. **Il conflitto è risolto.**
 
-**Setup richiesto**
-- Email infra (`setup_email_infra`) se non già attiva → richiederà setup dominio email se mancante.
-- Generare e salvare VAPID keys come secrets (`add_secret`).
+## Azione proposta
 
-## 2. Dashboard Admin (`/admin`)
+Nessuna modifica al codice è necessaria. Procedo con questi passi di verifica:
 
-**Accesso**: stesso login utente, ma sbloccato solo se `has_role(auth.uid(), 'admin')`.
-- Bootstrap admin: migration inserisce il tuo `user_id` (chiederò email) come admin.
-- Layout route `src/routes/_admin.tsx` con `beforeLoad` che verifica ruolo via RPC `is_current_user_admin()`; redirect se non admin.
-- Link "Admin" visibile in Impostazioni solo se admin.
+1. Ricarica la preview (hard refresh: Ctrl/Cmd+Shift+R) per scaricare il nuovo bundle e cancellare l'errore "Failed to fetch dynamically imported module".
+2. Apri `/home` come utente normale: deve caricare senza overlay di errore.
+3. Apri `/admin` con il tuo account (`mangino.manuel@gmail.com`): deve mostrare l'overview admin (conteggi utenti/household/email).
+4. Verifica le sotto-pagine `/admin/utenti` e `/admin/log-email`.
 
-**Pagine**
-- `/admin` — Overview: tot utenti, household, ricette, food_items, expenses (mese), invii email/push ultimi 7gg.
-- `/admin/utenti` — Lista profili con email (via view sicura), data registrazione, household, azione: promuovi/revoca admin, elimina account (chiama `delete-account`).
-- `/admin/household` — Lista household con membri e contatori.
-- `/admin/contenuti` — Gestione `recipes` con `is_system=true` (CRUD) e `recommended_products`.
-- `/admin/log-email` — Tabella `email_send_log` con filtri stato/data.
-- `/admin/log-notifiche` — Storico invii push (nuova tabella `push_send_log`).
-- `/admin/log-attivita` — Eventi sistema (errori cron, ecc., nuova tabella `admin_activity_log`).
-
-**Sicurezza**
-- Tutte le query admin passano da server functions con middleware che verifica `has_role`.
-- View `admin_users_view` (security_invoker) che espone email da `auth.users` solo a chi è admin (policy `USING (has_role(auth.uid(),'admin'))`).
-- RLS aggiornata su tabelle log per permettere SELECT a admin.
-
-## 3. Bug check completo
-
-Verifica end-to-end:
-- Build TS senza errori.
-- Auth flow: signup → email verify → login → onboarding → home.
-- Dispensa: aggiungi/modifica/elimina, filtro scadenze.
-- Piano mensile: drawer giorno, salvataggio entries, persistenza mesi precedenti.
-- AI → Spesa: invocazione edge function, deduplica vs dispensa.
-- Casa condivisa: genera invito, join via `/join/$code`.
-- Notifiche: permesso browser, registrazione push subscription.
-- Impostazioni: tutte le sotto-pagine, salvataggio preferenze.
-- Linter Supabase + security scan, fix di eventuali warning.
-
-## 4. Export codice (ZIP)
-
-Script che zippa `src/`, `supabase/`, `public/`, file root config (package.json, vite.config, tsconfig, ecc.) in `/mnt/documents/dispensa-app-export.zip`, escludendo `node_modules`, `.output`, `dist`, `routeTree.gen.ts`. Output come `<lov-artifact>` scaricabile.
-
-## Ordine di esecuzione
-1. Migration: `user_roles`, `has_role`, view admin, log tables, policies, bootstrap admin (chiederò email).
-2. Setup email infra + VAPID secrets.
-3. Server route daily-notifications + cron job.
-4. Dashboard admin (route, pagine, server functions).
-5. Bug check (build, linter, scan, fix).
-6. Generazione ZIP export.
-
-## Domanda residua
-Per nominarti admin in fase di migration mi serve la **email del tuo account** (quella con cui fai login nell'app). Te la chiederò all'inizio dell'implementazione.
+Se dopo l'hard refresh vedi ancora l'errore, lo diagnostico ulteriormente (probabile service worker o sessione preview cached).
