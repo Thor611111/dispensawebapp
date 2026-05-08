@@ -1,116 +1,70 @@
 
-# Piano di lavoro — 5 fasi incrementali
+# Piano: Notifiche automatiche, Dashboard admin, Bug check, Export
 
-Ho ordinato gli interventi dal **meno rischioso al più complesso**, in modo che ogni fase sia stabile prima di passare alla successiva. Ogni fase è auto-consistente e rilasciabile.
+## 1. Invio automatico notifiche (1×/giorno)
 
----
+**Backend**
+- Nuova tabella `user_roles` con enum `app_role` (`admin`, `user`) + funzione `has_role(uuid, app_role)` SECURITY DEFINER (pattern standard, no recursion).
+- Server route `src/routes/api/public/hooks/daily-notifications.ts`:
+  - Auth via header `apikey` (anon key) — pattern canonico pg_cron.
+  - Per ogni household con `notification_preferences.daily_send_hour == ora corrente UTC`:
+    - Calcola alimenti in scadenza (≤ `expiry_warning_days`).
+    - Calcola pasti pianificati per oggi/domani.
+    - Calcola lista spesa pendente.
+    - Per ogni membro:
+      - Se `push_enabled` e ha `push_subscriptions` → invia Web Push (richiede `VAPID_PUBLIC_KEY` + `VAPID_PRIVATE_KEY` come secrets, libreria `web-push` compatibile Worker).
+      - Se `email_enabled` → enqueue email transazionale via `enqueue_email`.
+- Cron `pg_cron` ogni ora (`0 * * * *`) che chiama l'endpoint con body `{}`.
 
-## Fase 1 — Auth, Profilo → Impostazioni, Home personalizzata
+**Setup richiesto**
+- Email infra (`setup_email_infra`) se non già attiva → richiederà setup dominio email se mancante.
+- Generare e salvare VAPID keys come secrets (`add_secret`).
 
-**Obiettivo**: ripulire l'esperienza di base prima di toccare la logica.
+## 2. Dashboard Admin (`/admin`)
 
-- **Registrazione** (`/signup`): aggiungere campo "Conferma password" con validazione match + icona occhio (show/hide) su entrambi i campi password. Stessa icona anche su `/login` e `/reset-password`.
-- **Home**: mostrare il nome dell'utente in alto ("Ciao, Manuel 👋") leggendolo da `profiles.display_name`.
-- **Profilo → Impostazioni**: rinominare la voce di menu e ristrutturare la pagina con sottosezioni navigabili:
-  - Profilo (nome, email, avatar)
-  - Casa & membri (vedi Fase 4)
-  - Notifiche (vedi Fase 5)
-  - Preferenze alimentari (diete, allergie, budget — già esistenti)
-  - Scadenze & soglie (vedi Fase 2)
-  - Esci / Elimina account
-- **Quick actions home**: aggiungere shortcut a Piano e Lista spesa accanto a Dispensa/Ricette/Spesa.
+**Accesso**: stesso login utente, ma sbloccato solo se `has_role(auth.uid(), 'admin')`.
+- Bootstrap admin: migration inserisce il tuo `user_id` (chiederò email) come admin.
+- Layout route `src/routes/_admin.tsx` con `beforeLoad` che verifica ruolo via RPC `is_current_user_admin()`; redirect se non admin.
+- Link "Admin" visibile in Impostazioni solo se admin.
 
----
+**Pagine**
+- `/admin` — Overview: tot utenti, household, ricette, food_items, expenses (mese), invii email/push ultimi 7gg.
+- `/admin/utenti` — Lista profili con email (via view sicura), data registrazione, household, azione: promuovi/revoca admin, elimina account (chiama `delete-account`).
+- `/admin/household` — Lista household con membri e contatori.
+- `/admin/contenuti` — Gestione `recipes` con `is_system=true` (CRUD) e `recommended_products`.
+- `/admin/log-email` — Tabella `email_send_log` con filtri stato/data.
+- `/admin/log-notifiche` — Storico invii push (nuova tabella `push_send_log`).
+- `/admin/log-attivita` — Eventi sistema (errori cron, ecc., nuova tabella `admin_activity_log`).
 
-## Fase 2 — Dispensa intelligente & scadenze
+**Sicurezza**
+- Tutte le query admin passano da server functions con middleware che verifica `has_role`.
+- View `admin_users_view` (security_invoker) che espone email da `auth.users` solo a chi è admin (policy `USING (has_role(auth.uid(),'admin'))`).
+- RLS aggiornata su tabelle log per permettere SELECT a admin.
 
-**Obiettivo**: rendere visibili e gestibili i prodotti in scadenza.
+## 3. Bug check completo
 
-- **Card "In scadenza" sulla home**: mostrare numero prodotti + grammatura totale (es. "3 prodotti · 540 g"), cliccabile → porta a `/dispensa?filter=expiring`.
-- **Sezione "In scadenza" nella Dispensa**: tab/accordion in cima con i prodotti che scadono entro N giorni, ordinati per urgenza, con azioni rapide (consuma, butta, aggiungi a spesa).
-- **Soglia personalizzabile**: in Impostazioni → Scadenze, slider "Avvisami N giorni prima" (default 3), salvato in `user_preferences`.
-- **Tecnico**: aggiungere campo `expiry_warning_days` a `user_preferences` via migrazione.
+Verifica end-to-end:
+- Build TS senza errori.
+- Auth flow: signup → email verify → login → onboarding → home.
+- Dispensa: aggiungi/modifica/elimina, filtro scadenze.
+- Piano mensile: drawer giorno, salvataggio entries, persistenza mesi precedenti.
+- AI → Spesa: invocazione edge function, deduplica vs dispensa.
+- Casa condivisa: genera invito, join via `/join/$code`.
+- Notifiche: permesso browser, registrazione push subscription.
+- Impostazioni: tutte le sotto-pagine, salvataggio preferenze.
+- Linter Supabase + security scan, fix di eventuali warning.
 
----
+## 4. Export codice (ZIP)
 
-## Fase 3 — Piano mensile, modifica per giorno, spesa generata dal piano
+Script che zippa `src/`, `supabase/`, `public/`, file root config (package.json, vite.config, tsconfig, ecc.) in `/mnt/documents/dispensa-app-export.zip`, escludendo `node_modules`, `.output`, `dist`, `routeTree.gen.ts`. Output come `<lov-artifact>` scaricabile.
 
-**Obiettivo**: il cuore della richiesta. Trasformare il piano da settimanale a mensile, persistente e azionabile.
+## Ordine di esecuzione
+1. Migration: `user_roles`, `has_role`, view admin, log tables, policies, bootstrap admin (chiederò email).
+2. Setup email infra + VAPID secrets.
+3. Server route daily-notifications + cron job.
+4. Dashboard admin (route, pagine, server functions).
+5. Bug check (build, linter, scan, fix).
+6. Generazione ZIP export.
 
-- **Vista mensile** in `/piano`:
-  - Header con data completa ("Maggio 2026") e navigazione ◀ / ▶ tra mesi (illimitato avanti/indietro).
-  - Toggle Mese / Settimana / Giorno.
-  - Calendario mensile con anteprima pasti per giorno.
-- **Modifica per giorno**: tap su un giorno → drawer con pranzo + cena, possibilità di:
-  - Sostituire ricetta (cerca tra ricette utente + sistema)
-  - Generare alternativa con AI
-  - Aggiungere note
-  - Cancellare il pasto
-- **Storico persistente**: ogni `meal_plan` resta salvato; l'utente può navigare mesi passati e pianificare mesi futuri.
-- **Genera spesa dal piano** (azione chiave):
-  - Pulsante "Aggiungi ingredienti mancanti alla lista spesa" sul piano (settimana o mese).
-  - Edge function che: estrae ingredienti dalle ricette del periodo → confronta con `food_items` (dispensa) considerando quantità → aggiunge solo i mancanti/insufficienti a `shopping_list_items` evitando duplicati.
-- **Tecnico**: nuova edge function `ai-plan-to-shopping`; estensione `meal_plan_entries` con eventuale `recipe_id` reale per recuperare ingredienti.
-
----
-
-## Fase 4 — Casa condivisa (multi-utente)
-
-**Obiettivo**: due o più account sulla stessa casa, dispense condivise.
-
-- **Sezione "Casa & membri" in Impostazioni**:
-  - Lista membri con ruolo
-  - Genera codice invito (riusa `household_invites` esistente) condivisibile (copia link / share nativo)
-  - Invia invito via email (template auth dedicato, infrastruttura email già presente)
-  - Pagina `/join/:code` per accettare invito (anche da non registrati: signup → join automatico)
-- **Card sulla home**: "La tua casa" con avatar dei membri + CTA "Invita qualcuno" se sei solo.
-- **Selettore casa** in alto se l'utente appartiene a più nuclei (es. casa + casa genitori).
-- **RLS**: già pronte (basate su `is_household_member`), nessuna modifica.
-
----
-
-## Fase 5 — Notifiche (Web Push + Email)
-
-**Obiettivo**: l'app raggiunge l'utente senza essere aperta.
-
-- **Web Push (PWA)**:
-  - Service worker (richiede di estendere il manifest già esistente)
-  - Subscription salvata in nuova tabella `push_subscriptions`
-  - Funziona su Android/desktop e su iOS solo se app installata in home
-- **Email** (fallback + canale principale su iOS non installato): template "Promemoria scadenze" e "Piano della settimana pronto".
-- **Cron** (`pg_cron` + endpoint `/api/public/hooks/notifications`):
-  - Ogni mattina alle 9: scadenze imminenti → push + email
-  - Ogni domenica sera: ricorda di pianificare la settimana
-- **Impostazioni → Notifiche**: toggle per categoria (scadenze, piano, suggerimenti), canale preferito (push/email/entrambi), orario preferito.
-- **Tecnico**: tabelle `push_subscriptions`, `notification_preferences`; secret `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` da generare.
-
----
-
-## Lista spesa AI generata (incluso nella Fase 3)
-
-Nella pagina `/spesa` aggiungo un pulsante "Genera con AI" con due modalità:
-1. **In base ai tuoi gusti** — usa preferenze, allergie, ricette più usate (`recipe_feedback` like) e ricette frequenti del piano storico.
-2. **In base al piano** — estrae dal piano corrente (settimana/mese) gli ingredienti mancanti.
-
----
-
-## Funzioni extra suggerite (da confermare, non incluse di default)
-
-Per rendere l'esperienza ancora più automatica, posso aggiungere in seguito:
-- **Scan scontrino** già presente (`ai-scan-receipt`) — esporlo meglio come quick action su home.
-- **Suggerimento "Cosa cucino oggi"** sulla home basato su scadenze imminenti.
-- **Spreco evitato**: contatore € risparmiati consumando prodotti in scadenza.
-- **Riordino automatico**: prodotti finiti in dispensa → suggerimento aggiunta a spesa.
-- **Modalità offline** della dispensa (richiede service worker, in arrivo con Fase 5).
-
----
-
-## Note tecniche
-
-- Il database ha già: `households`, `household_members`, `household_invites`, `meal_plans`, `meal_plan_entries`, `shopping_list_items`, `food_items`, `recipes` con RLS corrette → la maggior parte del lavoro è frontend + edge functions, poche migrazioni.
-- Email infra già configurata (pgmq + cron) → riusabile per notifiche email.
-- PWA manifest già presente → estendere con service worker per push.
-
----
-
-**Procedo con la Fase 1?** Le fasi successive seguono nello stesso ordine, una alla volta, così verifichiamo insieme che tutto funzioni prima di andare avanti.
+## Domanda residua
+Per nominarti admin in fase di migration mi serve la **email del tuo account** (quella con cui fai login nell'app). Te la chiederò all'inizio dell'implementazione.
