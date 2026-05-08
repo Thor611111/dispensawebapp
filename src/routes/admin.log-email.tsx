@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { listEmailLog } from "@/lib/admin.functions";
 import { Loader2 } from "lucide-react";
 
-export const Route = createFileRoute("/_admin/log-email")({ component: Page });
+export const Route = createFileRoute("/admin/log-email")({ component: Page });
 
 function Page() {
   const fn = useServerFn(listEmailLog);

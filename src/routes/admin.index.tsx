@@ -6,7 +6,7 @@ import { Loader2, Users, Home, ChefHat, Package, ShoppingCart, Wallet, Mail, Bel
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/_admin/")({ component: AdminOverview });
+export const Route = createFileRoute("/admin/")({ component: AdminOverview });
 
 function Stat({ icon: Icon, label, value }: { icon: any; label: string; value: any }) {
   return (

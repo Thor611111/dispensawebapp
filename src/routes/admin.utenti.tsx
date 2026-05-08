@@ -6,7 +6,7 @@ import { Loader2, Shield, ShieldOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/_admin/utenti")({ component: Page });
+export const Route = createFileRoute("/admin/utenti")({ component: Page });
 
 function Page() {
   const fn = useServerFn(listAdminUsers);
