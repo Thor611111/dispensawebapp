@@ -19,7 +19,9 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as JoinCodeRouteImport } from './routes/join.$code'
 import { Route as AdminUtentiRouteImport } from './routes/admin.utenti'
+import { Route as AdminLogsRouteImport } from './routes/admin.logs'
 import { Route as AdminLogEmailRouteImport } from './routes/admin.log-email'
+import { Route as AdminConsoleRouteImport } from './routes/admin.console'
 import { Route as AppSpesaRouteImport } from './routes/_app/spesa'
 import { Route as AppRicetteRouteImport } from './routes/_app/ricette'
 import { Route as AppPianoRouteImport } from './routes/_app/piano'
@@ -88,9 +90,19 @@ const AdminUtentiRoute = AdminUtentiRouteImport.update({
   path: '/utenti',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminLogsRoute = AdminLogsRouteImport.update({
+  id: '/logs',
+  path: '/logs',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminLogEmailRoute = AdminLogEmailRouteImport.update({
   id: '/log-email',
   path: '/log-email',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminConsoleRoute = AdminConsoleRouteImport.update({
+  id: '/console',
+  path: '/console',
   getParentRoute: () => AdminRoute,
 } as any)
 const AppSpesaRoute = AppSpesaRouteImport.update({
@@ -202,7 +214,9 @@ export interface FileRoutesByFullPath {
   '/piano': typeof AppPianoRoute
   '/ricette': typeof AppRicetteRouteWithChildren
   '/spesa': typeof AppSpesaRoute
+  '/admin/console': typeof AdminConsoleRoute
   '/admin/log-email': typeof AdminLogEmailRoute
+  '/admin/logs': typeof AdminLogsRoute
   '/admin/utenti': typeof AdminUtentiRoute
   '/join/$code': typeof JoinCodeRoute
   '/admin/': typeof AdminIndexRoute
@@ -231,7 +245,9 @@ export interface FileRoutesByTo {
   '/piano': typeof AppPianoRoute
   '/ricette': typeof AppRicetteRouteWithChildren
   '/spesa': typeof AppSpesaRoute
+  '/admin/console': typeof AdminConsoleRoute
   '/admin/log-email': typeof AdminLogEmailRoute
+  '/admin/logs': typeof AdminLogsRoute
   '/admin/utenti': typeof AdminUtentiRoute
   '/join/$code': typeof JoinCodeRoute
   '/admin': typeof AdminIndexRoute
@@ -263,7 +279,9 @@ export interface FileRoutesById {
   '/_app/piano': typeof AppPianoRoute
   '/_app/ricette': typeof AppRicetteRouteWithChildren
   '/_app/spesa': typeof AppSpesaRoute
+  '/admin/console': typeof AdminConsoleRoute
   '/admin/log-email': typeof AdminLogEmailRoute
+  '/admin/logs': typeof AdminLogsRoute
   '/admin/utenti': typeof AdminUtentiRoute
   '/join/$code': typeof JoinCodeRoute
   '/admin/': typeof AdminIndexRoute
@@ -295,7 +313,9 @@ export interface FileRouteTypes {
     | '/piano'
     | '/ricette'
     | '/spesa'
+    | '/admin/console'
     | '/admin/log-email'
+    | '/admin/logs'
     | '/admin/utenti'
     | '/join/$code'
     | '/admin/'
@@ -324,7 +344,9 @@ export interface FileRouteTypes {
     | '/piano'
     | '/ricette'
     | '/spesa'
+    | '/admin/console'
     | '/admin/log-email'
+    | '/admin/logs'
     | '/admin/utenti'
     | '/join/$code'
     | '/admin'
@@ -355,7 +377,9 @@ export interface FileRouteTypes {
     | '/_app/piano'
     | '/_app/ricette'
     | '/_app/spesa'
+    | '/admin/console'
     | '/admin/log-email'
+    | '/admin/logs'
     | '/admin/utenti'
     | '/join/$code'
     | '/admin/'
@@ -460,11 +484,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminUtentiRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/logs': {
+      id: '/admin/logs'
+      path: '/logs'
+      fullPath: '/admin/logs'
+      preLoaderRoute: typeof AdminLogsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/log-email': {
       id: '/admin/log-email'
       path: '/log-email'
       fullPath: '/admin/log-email'
       preLoaderRoute: typeof AdminLogEmailRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/console': {
+      id: '/admin/console'
+      path: '/console'
+      fullPath: '/admin/console'
+      preLoaderRoute: typeof AdminConsoleRouteImport
       parentRoute: typeof AdminRoute
     }
     '/_app/spesa': {
@@ -663,13 +701,17 @@ const AppRouteChildren: AppRouteChildren = {
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 interface AdminRouteChildren {
+  AdminConsoleRoute: typeof AdminConsoleRoute
   AdminLogEmailRoute: typeof AdminLogEmailRoute
+  AdminLogsRoute: typeof AdminLogsRoute
   AdminUtentiRoute: typeof AdminUtentiRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminConsoleRoute: AdminConsoleRoute,
   AdminLogEmailRoute: AdminLogEmailRoute,
+  AdminLogsRoute: AdminLogsRoute,
   AdminUtentiRoute: AdminUtentiRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
@@ -693,13 +735,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

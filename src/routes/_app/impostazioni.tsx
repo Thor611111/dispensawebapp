@@ -1,7 +1,7 @@
 import { createFileRoute, Outlet, useLocation, useNavigate, Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/AppShell";
 import { useAuth } from "@/lib/auth-context";
-import { useHouseholdId, usePreferences, useExpenses, useProfile, useIsAdmin } from "@/lib/queries";
+import { useHouseholdId, usePreferences, useExpenses, useProfile, useIsOwner } from "@/lib/queries";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,7 +44,7 @@ function ImpostazioniIndex() {
   const { user, signOut } = useAuth();
   const nav = useNavigate();
   const { data: profile } = useProfile();
-  const { data: isAdmin } = useIsAdmin();
+  const { data: isOwner } = useIsOwner();
   const logout = async () => {
     await signOut();
     nav({ to: "/" });
@@ -58,7 +58,7 @@ function ImpostazioniIndex() {
   };
 
   const sections = [
-    ...(isAdmin ? [{ to: "/admin" as const, label: "Admin Dashboard", desc: "Gestione app", icon: ShieldCheck }] : []),
+    ...(isOwner ? [{ to: "/admin" as const, label: "Owner Console", desc: "Gestione app", icon: ShieldCheck }] : []),
     { to: "/impostazioni/profilo", label: "Profilo", desc: profile?.display_name ?? user?.email ?? "", icon: User },
     { to: "/impostazioni/preferenze", label: "Preferenze alimentari", desc: "Diete, allergie, persone", icon: Utensils },
     { to: "/impostazioni/scadenze", label: "Scadenze e budget", desc: "Avvisi e tetti di spesa", icon: Clock },

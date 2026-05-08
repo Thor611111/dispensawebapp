@@ -40,6 +40,18 @@ export function useIsAdmin() {
   });
 }
 
+export function useIsOwner() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["isOwner", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data } = await supabase.rpc("is_current_user_owner");
+      return !!data;
+    },
+  });
+}
+
 export function usePreferences(householdId: string | null | undefined) {
   return useQuery({
     queryKey: ["prefs", householdId],
