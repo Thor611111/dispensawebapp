@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { render } from '@react-email/components'
+import { renderAsync } from '@react-email/components'
 import { parseEmailWebhookPayload } from '@lovable.dev/email-js'
 import { WebhookError, verifyWebhookRequest } from '@lovable.dev/webhooks-js'
 import { createClient } from '@supabase/supabase-js'
@@ -34,7 +34,7 @@ const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
 const SITE_NAME = "dispensawebapp"
 const SENDER_DOMAIN = "notify.pantryai.it"
 const ROOT_DOMAIN = "pantryai.it"
-const FROM_DOMAIN = "notify.pantryai.it"
+const FROM_DOMAIN = "pantryai.it"
 
 function redactEmail(email: string | null | undefined): string {
   if (!email) return '***'
@@ -90,8 +90,7 @@ export const Route = createFileRoute("/lovable/email/auth/webhook")({
             }
           }
 
-          const msg = error instanceof Error ? error.message : String(error)
-          console.error('Webhook verification failed', { error: msg })
+          console.error('Webhook verification failed', { error })
           return Response.json(
             { error: 'Invalid webhook payload' },
             { status: 400 }
@@ -146,8 +145,8 @@ export const Route = createFileRoute("/lovable/email/auth/webhook")({
 
         // Render React Email to HTML and plain text
         const element = React.createElement(EmailTemplate, templateProps)
-        const html = await render(element)
-        const text = await render(element, { plainText: true })
+        const html = await renderAsync(element)
+        const text = await renderAsync(element, { plainText: true })
 
         // Enqueue email for async processing by the dispatcher (process-email-queue).
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
