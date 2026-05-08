@@ -12,6 +12,22 @@ export function useHouseholdId() {
   });
 }
 
+export function useProfile() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["profile", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user!.id)
+        .maybeSingle();
+      return data;
+    },
+  });
+}
+
 export function usePreferences(householdId: string | null | undefined) {
   return useQuery({
     queryKey: ["prefs", householdId],

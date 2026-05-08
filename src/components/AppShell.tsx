@@ -8,7 +8,7 @@ const tabs = [
   { to: "/ricette", label: "Ricette", icon: ChefHat },
   { to: "/piano", label: "Piano", icon: Calendar },
   { to: "/spesa", label: "Spesa", icon: ShoppingCart },
-  { to: "/impostazioni", label: "Profilo", icon: SettingsIcon },
+  { to: "/impostazioni", label: "Impostazioni", icon: SettingsIcon },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {

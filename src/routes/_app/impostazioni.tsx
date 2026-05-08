@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/PasswordInput";
 import { Badge } from "@/components/ui/badge";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -106,7 +107,7 @@ function Impostazioni() {
 
   return (
     <div>
-      <PageHeader title="Profilo" subtitle={user?.email ?? ""} />
+      <PageHeader title="Impostazioni" subtitle={user?.email ?? ""} />
 
       <InstallAppCard />
 
@@ -152,11 +153,11 @@ function Impostazioni() {
           <p className="font-semibold">Modifica password</p>
           <div className="space-y-2">
             <Label>Nuova password</Label>
-            <Input type="password" value={newPwd} onChange={(e) => setNewPwd(e.target.value)} />
+            <PasswordInput value={newPwd} onChange={(e) => setNewPwd(e.target.value)} />
           </div>
           <div className="space-y-2">
             <Label>Conferma password</Label>
-            <Input type="password" value={confirmPwd} onChange={(e) => setConfirmPwd(e.target.value)} />
+            <PasswordInput value={confirmPwd} onChange={(e) => setConfirmPwd(e.target.value)} />
           </div>
           <Button variant="secondary" className="w-full" disabled={pwdLoading} onClick={changePassword}>
             {pwdLoading ? "Aggiornamento…" : "Aggiorna password"}
