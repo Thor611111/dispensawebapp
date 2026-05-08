@@ -5,6 +5,7 @@ import { getAdminOverview, triggerDailyNotifications } from "@/lib/admin.functio
 import { Loader2, Users, Home, ChefHat, Package, ShoppingCart, Wallet, Mail, Bell, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/admin/")({ component: AdminOverview });
 
@@ -18,16 +19,26 @@ function Stat({ icon: Icon, label, value }: { icon: any; label: string; value: a
 }
 
 function AdminOverview() {
+  const { session } = useAuth();
+  const accessToken = session?.access_token;
   const fn = useServerFn(getAdminOverview);
   const trigger = useServerFn(triggerDailyNotifications);
-  const { data, isLoading } = useQuery({ queryKey: ["admin-overview"], queryFn: () => fn({}) });
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["admin-overview"],
+    enabled: !!accessToken,
+    queryFn: () => fn({ data: { accessToken: accessToken! } }),
+  });
   const m = useMutation({
-    mutationFn: () => trigger({}),
+    mutationFn: () => {
+      if (!accessToken) throw new Error("Sessione non disponibile");
+      return trigger({ data: { accessToken } });
+    },
     onSuccess: (r: any) => toast.success(`Inviati ${r?.sent ?? 0} digest`),
     onError: (e: any) => toast.error(e?.message ?? "Errore"),
   });
 
   if (isLoading) return <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin" /></div>;
+  if (error) return <div className="rounded-2xl border bg-card p-4 text-sm text-destructive">{error.message}</div>;
   const d: any = data ?? {};
 
   return (
