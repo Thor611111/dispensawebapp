@@ -58,13 +58,13 @@ function ImpostazioniIndex() {
   };
 
   const sections = [
+    ...(isAdmin ? [{ to: "/admin" as const, label: "Admin Dashboard", desc: "Gestione app", icon: ShieldCheck }] : []),
     { to: "/impostazioni/profilo", label: "Profilo", desc: profile?.display_name ?? user?.email ?? "", icon: User },
     { to: "/impostazioni/preferenze", label: "Preferenze alimentari", desc: "Diete, allergie, persone", icon: Utensils },
     { to: "/impostazioni/scadenze", label: "Scadenze e budget", desc: "Avvisi e tetti di spesa", icon: Clock },
     { to: "/impostazioni/notifiche", label: "Notifiche", desc: "Promemoria e canali", icon: Bell },
     { to: "/impostazioni/casa", label: "Casa & membri", desc: "Condividi il nucleo", icon: HomeIcon },
     { to: "/impostazioni/sicurezza", label: "Password e sicurezza", desc: "Cambia password", icon: KeyRound },
-    ...(isAdmin ? [{ to: "/admin" as const, label: "Admin Dashboard", desc: "Gestione app", icon: ShieldCheck }] : []),
   ];
 
   return (
