@@ -400,15 +400,81 @@ function Spesa() {
                 </div>
                 <input type="file" accept="image/*" capture="environment" className="hidden" onChange={onReceiptFile} disabled={scanLoading} />
               </Label>
-              {scanResult && (
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">Trovati {scanResult.items.length} articoli · totale {scanResult.total.toFixed(2)} €</p>
-                  <ul className="max-h-48 overflow-auto rounded-lg border bg-secondary/20 p-2 text-xs">
-                    {scanResult.items.map((si, i) => (
-                      <li key={i} className="flex justify-between py-0.5"><span className="truncate">{si.name}</span><span>{Number(si.price).toFixed(2)} €</span></li>
-                    ))}
+              {scanResult && recRows.length > 0 && (
+                <div className="space-y-3">
+                  <div className="rounded-lg bg-secondary/30 p-2 text-xs text-muted-foreground">
+                    OCR: {scanResult.items.length} articoli rilevati
+                    {scanResult.subtotal != null ? ` · subtot ${Number(scanResult.subtotal).toFixed(2)} €` : ""}
+                    {scanResult.discounts ? ` · sconti ${Number(scanResult.discounts).toFixed(2)} €` : ""}
+                    {scanResult.total ? ` · totale ${scanResult.total.toFixed(2)} €` : ""}
+                  </div>
+                  <ul className="max-h-[50vh] space-y-2 overflow-auto pr-1">
+                    {recRows.map((r) => {
+                      const StatusIcon = r.status === "matched" ? CheckCircle2 : r.status === "missing_from_list" ? PackagePlus : HelpCircle;
+                      const statusColor = r.status === "matched" ? "text-primary" : r.status === "missing_from_list" ? "text-amber-500" : "text-muted-foreground";
+                      const statusLabel = r.status === "matched" ? "In lista" : r.status === "missing_from_list" ? "In lista, non rilevato" : "Da confermare";
+                      return (
+                        <li key={r.key} className={`rounded-xl border p-2.5 ${r.purchased ? "bg-card" : "bg-secondary/20 opacity-80"}`}>
+                          <div className="flex items-start gap-2">
+                            <StatusIcon className={`mt-1 h-4 w-4 shrink-0 ${statusColor}`} />
+                            <div className="flex-1 min-w-0 space-y-2">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{statusLabel}</span>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs text-muted-foreground">Acquistato</span>
+                                  <Switch checked={r.purchased} onCheckedChange={(v) => updateRow(r.key, { purchased: !!v })} />
+                                </div>
+                              </div>
+                              <Input value={r.name} onChange={(e) => updateRow(r.key, { name: e.target.value })} className="h-8 text-sm" />
+                              <div className="grid grid-cols-3 gap-1.5">
+                                <Input type="number" step="0.01" placeholder="Qtà" value={r.quantity} onChange={(e) => updateRow(r.key, { quantity: Number(e.target.value) })} className="h-8 text-xs" />
+                                <Input placeholder="Unità" value={r.unit} onChange={(e) => updateRow(r.key, { unit: e.target.value })} className="h-8 text-xs" />
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="€"
+                                  value={r.price ?? ""}
+                                  onChange={(e) => updateRow(r.key, { price: e.target.value === "" ? null : Number(e.target.value) })}
+                                  className={`h-8 text-xs ${r.purchased && r.price == null ? "border-destructive" : ""}`}
+                                />
+                              </div>
+                              {r.purchased && pantries.length > 1 && (
+                                <Select value={r.pantryId ?? effectivePantry ?? ""} onValueChange={(v) => updateRow(r.key, { pantryId: v })}>
+                                  <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Dispensa" /></SelectTrigger>
+                                  <SelectContent>
+                                    {pantries.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                                  </SelectContent>
+                                </Select>
+                              )}
+                            </div>
+                          </div>
+                        </li>
+                      );
+                    })}
                   </ul>
-                  <Button className="w-full" onClick={closeWithScan} disabled={closing}>{closing ? "Salvataggio…" : "Aggiungi tutto in dispensa"}</Button>
+                  <div className="rounded-xl border bg-card p-3 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Articoli confermati</span>
+                      <span className="font-medium">{purchasedSubtotal.toFixed(2)} €</span>
+                    </div>
+                    <div className="mt-2 flex items-center gap-2">
+                      <Label className="text-muted-foreground">Totale scontrino</Label>
+                      <Input type="number" step="0.01" value={recTotal} onChange={(e) => setRecTotal(e.target.value)} className="h-8 flex-1" />
+                      <span className="text-xs text-muted-foreground">€</span>
+                    </div>
+                    {Math.abs(totalDiff) > 0.5 && (
+                      <p className="mt-2 flex items-start gap-1.5 text-xs text-amber-600">
+                        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                        Differenza {totalDiff > 0 ? "+" : ""}{totalDiff.toFixed(2)} € (sconti, articoli non identificati o prezzi mancanti).
+                      </p>
+                    )}
+                    {missingPriceCount > 0 && (
+                      <p className="mt-1 text-xs text-destructive">{missingPriceCount} prezzi mancanti per articoli acquistati.</p>
+                    )}
+                  </div>
+                  <Button className="w-full" onClick={closeWithScan} disabled={closing}>
+                    {closing ? "Salvataggio…" : `Conferma · ${purchasedRows.length} in dispensa · ${(recTotalNum > 0 ? recTotalNum : purchasedSubtotal).toFixed(2)} €`}
+                  </Button>
                 </div>
               )}
             </TabsContent>
