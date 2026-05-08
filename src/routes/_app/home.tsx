@@ -1,10 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/AppShell";
-import { useHouseholdId, useFoodItems, usePreferences, useExpenses, currentWeekStart, daysUntil } from "@/lib/queries";
+import { useHouseholdId, useFoodItems, usePreferences, useExpenses, useProfile, currentWeekStart, daysUntil } from "@/lib/queries";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Loader2, Clock, Wallet, Package, ChefHat, ShoppingCart, AlertTriangle } from "lucide-react";
+import { Sparkles, Loader2, Clock, Wallet, Package, ChefHat, ShoppingCart, AlertTriangle, Calendar } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { InstallAppCard } from "@/components/InstallAppCard";
@@ -18,6 +18,7 @@ function Home() {
   const { data: items = [] } = useFoodItems(hid);
   const { data: prefs } = usePreferences(hid);
   const { data: expenses = [] } = useExpenses(hid);
+  const { data: profile } = useProfile();
   const [quick, setQuick] = useState<R[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -53,9 +54,12 @@ function Home() {
 
   useEffect(() => { if (hid && items.length) loadQuick(); /* eslint-disable-next-line */ }, [hid, items.length]);
 
+  const firstName = (profile?.display_name ?? "").trim().split(/\s+/)[0];
+  const greeting = firstName ? `Ciao, ${firstName} 👋` : "Ciao 👋";
+
   return (
     <div>
-      <PageHeader title="Ciao 👋" subtitle={monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1)} />
+      <PageHeader title={greeting} subtitle={monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1)} />
 
       <InstallAppCard variant="banner" dismissible />
 
@@ -94,10 +98,12 @@ function Home() {
         </Link>
       )}
 
-      <div className="mb-4 grid grid-cols-3 gap-2">
+      <div className="mb-4 grid grid-cols-5 gap-2">
         <Link to="/dispensa" className="flex flex-col items-center gap-1 rounded-xl border bg-card p-3 text-xs"><Package className="h-5 w-5 text-primary" /> Dispensa</Link>
         <Link to="/ricette" className="flex flex-col items-center gap-1 rounded-xl border bg-card p-3 text-xs"><ChefHat className="h-5 w-5 text-primary" /> Ricette</Link>
+        <Link to="/piano" className="flex flex-col items-center gap-1 rounded-xl border bg-card p-3 text-xs"><Calendar className="h-5 w-5 text-primary" /> Piano</Link>
         <Link to="/spesa" className="flex flex-col items-center gap-1 rounded-xl border bg-card p-3 text-xs"><ShoppingCart className="h-5 w-5 text-primary" /> Spesa</Link>
+        <Link to="/impostazioni" className="flex flex-col items-center gap-1 rounded-xl border bg-card p-3 text-[10px]"><Wallet className="h-5 w-5 text-primary" /> Budget</Link>
       </div>
 
       <div className="mb-2 flex items-center justify-between">
