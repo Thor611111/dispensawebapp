@@ -936,6 +936,10 @@ export type Database = {
           read_ct: number
         }[]
       }
+      shares_household_with: {
+        Args: { _other: string; _user: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "user"
