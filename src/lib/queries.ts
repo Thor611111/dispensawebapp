@@ -174,6 +174,27 @@ export function useCurrentMealPlan(householdId: string | null | undefined) {
   });
 }
 
+export function useUpcomingMeals(householdId: string | null | undefined, fromDate: string, toDate: string) {
+  return useQuery({
+    queryKey: ["upcoming-meals", householdId, fromDate, toDate],
+    enabled: !!householdId,
+    queryFn: async () => {
+      const { data: plans } = await supabase.from("meal_plans").select("id").eq("household_id", householdId!);
+      const ids = (plans ?? []).map((p) => p.id);
+      if (!ids.length) return [];
+      const { data } = await supabase
+        .from("meal_plan_entries")
+        .select("*, recipes(*, recipe_ingredients(*))")
+        .in("meal_plan_id", ids)
+        .gte("day_date", fromDate)
+        .lte("day_date", toDate)
+        .order("day_date")
+        .order("slot");
+      return data ?? [];
+    },
+  });
+}
+
 export function currentWeekStart() {
   const d = new Date();
   const day = d.getDay(); // 0 sun

@@ -1,16 +1,19 @@
 import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useHouseholdId, useFoodItems, usePreferences, useSavedRecipes, useRecipeFeedback } from "@/lib/queries";
+import { useHouseholdId, useFoodItems, usePreferences, useSavedRecipes, useRecipeFeedback, useUpcomingMeals } from "@/lib/queries";
 import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Sparkles, Loader2, Clock, Wallet, ThumbsDown, ThumbsUp, Heart, Plus, Trash2, BookmarkPlus, SlidersHorizontal } from "lucide-react";
+import { Sparkles, Loader2, Clock, Wallet, ThumbsDown, ThumbsUp, Heart, Plus, Trash2, BookmarkPlus, SlidersHorizontal, Barcode, Receipt, AlertCircle, CheckCircle2, CalendarPlus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { getRecipeStatus } from "@/lib/recipe-status";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/ricette")({ component: Ricette });
@@ -32,6 +35,16 @@ function Ricette() {
   const [maxMinutes, setMaxMinutes] = useState("");
   const [maxCost, setMaxCost] = useState("");
   const [difficulty, setDifficulty] = useState("");
+  const [planFor, setPlanFor] = useState<{ title: string; recipe_id?: string | null; ingredients?: any[] } | null>(null);
+  const [planDate, setPlanDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
+  const [planSlot, setPlanSlot] = useState<string>("dinner");
+  const [planSaving, setPlanSaving] = useState(false);
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowStr = tomorrow.toISOString().slice(0, 10);
+  const { data: upcoming = [] } = useUpcomingMeals(hid, todayStr, tomorrowStr);
+  const warningDays = Number(prefs?.expiry_warning_days ?? 3);
 
   if (location.pathname !== "/ricette") return <Outlet />;
 
@@ -107,16 +120,145 @@ function Ricette() {
     toast.success(`${rows.length} ingredienti aggiunti alla spesa`);
   };
 
+  const addMissingForUpcoming = async (entry: any) => {
+    if (!hid) return;
+    const ings = entry.recipes?.recipe_ingredients ?? [];
+    if (!ings.length) return toast.info("Ricetta senza ingredienti collegati");
+    const have = new Set(items.map((i: any) => i.name.toLowerCase()));
+    const missing = ings.filter((ing: any) => !have.has(ing.name.toLowerCase()));
+    if (!missing.length) return toast.success("Hai già tutto!");
+    const { data: existing } = await supabase.from("shopping_list_items").select("name").eq("household_id", hid);
+    const inList = new Set((existing ?? []).map((c: any) => c.name.toLowerCase()));
+    const rows = missing
+      .filter((m: any) => !inList.has(m.name.toLowerCase()))
+      .map((m: any) => ({ household_id: hid, name: m.name, quantity: m.quantity ?? 1, unit: m.unit ?? "pz", source: "recipe" }));
+    if (!rows.length) return toast.info("Mancanti già in lista");
+    await supabase.from("shopping_list_items").insert(rows);
+    qc.invalidateQueries({ queryKey: ["shopping", hid] });
+    toast.success(`${rows.length} ingredienti aggiunti alla spesa`);
+  };
+
+  const ensurePlanForDate = async (dateStr: string): Promise<string> => {
+    const d = new Date(dateStr);
+    const day = d.getDay();
+    const diff = (day + 6) % 7;
+    d.setDate(d.getDate() - diff);
+    const ws = d.toISOString().slice(0, 10);
+    const { data: existing } = await supabase.from("meal_plans").select("id").eq("household_id", hid!).eq("week_start", ws).maybeSingle();
+    if (existing) return existing.id;
+    const { data, error } = await supabase.from("meal_plans").insert({ household_id: hid!, week_start: ws }).select("id").single();
+    if (error || !data) throw error ?? new Error("plan");
+    return data.id;
+  };
+
+  const confirmPlan = async () => {
+    if (!hid || !planFor) return;
+    setPlanSaving(true);
+    try {
+      const planId = await ensurePlanForDate(planDate);
+      const { error } = await supabase.from("meal_plan_entries").insert({
+        meal_plan_id: planId,
+        day_date: planDate,
+        slot: planSlot as any,
+        recipe_id: planFor.recipe_id ?? null,
+        recipe_title_snapshot: planFor.title,
+      });
+      if (error) throw error;
+      qc.invalidateQueries({ queryKey: ["plan-month", hid] });
+      qc.invalidateQueries({ queryKey: ["upcoming-meals", hid] });
+      toast.success("Aggiunto al piano");
+      setPlanFor(null);
+    } catch (e: any) {
+      toast.error(e.message ?? "Errore");
+    } finally {
+      setPlanSaving(false);
+    }
+  };
+
+  const upcomingByDay = useMemo(() => {
+    const map: Record<string, any[]> = {};
+    for (const e of upcoming) (map[e.day_date] ||= []).push(e);
+    return map;
+  }, [upcoming]);
+  const SLOT_LABEL: Record<string, string> = { breakfast: "Colazione", lunch: "Pranzo", dinner: "Cena", snack: "Spuntino" };
+
   return (
     <div>
       <PageHeader title="Cosa cucino?" subtitle="Ricette pensate per te." />
 
-      <Tabs defaultValue="ai">
+      <div className="mb-3 grid grid-cols-2 gap-2">
+        <Button asChild size="sm" variant="outline">
+          <Link to="/dispensa/aggiungi" search={{ scan: 1 } as any}><Barcode className="h-4 w-4" /> Scan codice</Link>
+        </Button>
+        <Button asChild size="sm" variant="outline">
+          <Link to="/spesa" search={{ scan: 1 } as any}><Receipt className="h-4 w-4" /> Scan scontrino</Link>
+        </Button>
+      </div>
+
+      <Tabs defaultValue="today">
         <TabsList className="w-full">
+          <TabsTrigger value="today" className="flex-1">Da cucinare</TabsTrigger>
           <TabsTrigger value="ai" className="flex-1">Suggerite</TabsTrigger>
           <TabsTrigger value="saved" className="flex-1">Salvate ({saved.length})</TabsTrigger>
           <TabsTrigger value="mine" className="flex-1">Mie</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="today" className="space-y-3">
+          {upcoming.length === 0 ? (
+            <div className="rounded-2xl border border-dashed p-8 text-center space-y-2">
+              <p className="text-muted-foreground text-sm">Nessun pasto pianificato per oggi o domani.</p>
+              <Button asChild size="sm"><Link to="/piano">Vai al piano</Link></Button>
+            </div>
+          ) : (
+            [todayStr, tomorrowStr].map((ds) => {
+              const list = upcomingByDay[ds];
+              if (!list?.length) return null;
+              const d = new Date(ds);
+              const lbl = ds === todayStr ? "Oggi" : "Domani";
+              return (
+                <div key={ds} className="space-y-2">
+                  <p className="text-xs font-semibold uppercase text-muted-foreground">{lbl} · {d.toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "short" })}</p>
+                  {list.map((e: any) => {
+                    const ings = e.recipes?.recipe_ingredients ?? [];
+                    const status = ings.length ? getRecipeStatus(ings, items, warningDays) : null;
+                    return (
+                      <div key={e.id} className="rounded-2xl border bg-card p-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[11px] uppercase text-muted-foreground">{SLOT_LABEL[e.slot] ?? e.slot}</p>
+                            <p className="font-medium text-sm">{e.recipe_title_snapshot}</p>
+                            {e.notes && <p className="mt-0.5 text-xs text-primary">💡 {e.notes}</p>}
+                            {status?.hasIngredients && (
+                              <div className="mt-1.5 flex flex-wrap gap-1.5 text-[11px]">
+                                {status.allInPantry ? (
+                                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 px-2 py-0.5"><CheckCircle2 className="h-3 w-3" /> Hai tutto</span>
+                                ) : (
+                                  <button onClick={() => addMissingForUpcoming(e)} className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 px-2 py-0.5 hover:bg-amber-500/25"><AlertCircle className="h-3 w-3" /> Mancano {status.missing.length} → spesa</button>
+                                )}
+                                {status.expiringUsed.length > 0 && (
+                                  <span className="inline-flex items-center gap-1 rounded-full bg-orange-500/15 text-orange-700 dark:text-orange-300 px-2 py-0.5"><Clock className="h-3 w-3" /> Usa {status.expiringUsed.length} in scadenza</span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        {e.recipes?.instructions && (
+                          <details className="mt-2 text-sm">
+                            <summary className="cursor-pointer text-muted-foreground text-xs">Vedi ricetta</summary>
+                            <ul className="mt-2 space-y-0.5 text-xs">
+                              {ings.map((ing: any) => (<li key={ing.id}>• {ing.quantity ?? ""}{ing.unit ?? ""} {ing.name}</li>))}
+                            </ul>
+                            <p className="mt-2 whitespace-pre-line text-xs text-muted-foreground">{e.recipes.instructions}</p>
+                          </details>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })
+          )}
+        </TabsContent>
 
         <TabsContent value="ai" className="space-y-3">
           <div className="flex gap-2">
@@ -185,6 +327,9 @@ function Ricette() {
                     <Button size="sm" variant="outline" onClick={() => saveRecipe(r)}><BookmarkPlus className="h-4 w-4" /> Salva</Button>
                     <Button size="sm" variant="outline" onClick={() => addToShopping(r)}>Mancanti → spesa</Button>
                   </div>
+                  <Button size="sm" variant="outline" className="w-full mt-2" onClick={() => setPlanFor({ title: r.title, ingredients: r.ingredients })}>
+                    <CalendarPlus className="h-4 w-4" /> Pianifica
+                  </Button>
                 </li>
               );
             })}
@@ -219,6 +364,9 @@ function Ricette() {
                       <p className="mt-2 whitespace-pre-line text-muted-foreground">{r.instructions}</p>
                     </details>
                   )}
+                  <Button size="sm" variant="outline" className="w-full mt-3" onClick={() => setPlanFor({ title: r.title, recipe_id: r.id, ingredients: r.recipe_ingredients })}>
+                    <CalendarPlus className="h-4 w-4" /> Aggiungi al piano
+                  </Button>
                 </li>
               ))}
             </ul>
@@ -232,6 +380,37 @@ function Ricette() {
           )}
         </TabsContent>
       </Tabs>
+
+      <Dialog open={!!planFor} onOpenChange={(o) => !o && setPlanFor(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Aggiungi al piano</DialogTitle>
+            <DialogDescription>{planFor?.title}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label>Giorno</Label>
+              <Input type="date" value={planDate} onChange={(e) => setPlanDate(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Pasto</Label>
+              <Select value={planSlot} onValueChange={setPlanSlot}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="breakfast">Colazione</SelectItem>
+                  <SelectItem value="lunch">Pranzo</SelectItem>
+                  <SelectItem value="dinner">Cena</SelectItem>
+                  <SelectItem value="snack">Spuntino</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPlanFor(null)}>Annulla</Button>
+            <Button onClick={confirmPlan} disabled={planSaving}>{planSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarPlus className="h-4 w-4" />} Aggiungi</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

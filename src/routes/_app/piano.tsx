@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader } from "@/components/AppShell";
-import { useHouseholdId, useFoodItems, usePreferences } from "@/lib/queries";
+import { useHouseholdId, useFoodItems, usePreferences, useSavedRecipes } from "@/lib/queries";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Loader2, ChevronLeft, ChevronRight, ShoppingCart, Plus, Trash2, CalendarDays, CalendarRange, Calendar as CalendarIcon } from "lucide-react";
+import { Sparkles, Loader2, ChevronLeft, ChevronRight, ShoppingCart, Plus, Trash2, CalendarDays, CalendarRange, Calendar as CalendarIcon, Replace, RefreshCw, AlertCircle, CheckCircle2, Clock } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter } from "@/components/ui/drawer";
@@ -16,6 +16,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
+import { getRecipeStatus } from "@/lib/recipe-status";
 
 export const Route = createFileRoute("/_app/piano")({ component: Piano });
 
@@ -37,6 +38,7 @@ function Piano() {
   const { data: hid } = useHouseholdId();
   const { data: items = [] } = useFoodItems(hid);
   const { data: prefs } = usePreferences(hid);
+  const { data: saved = [] } = useSavedRecipes(hid);
   const qc = useQueryClient();
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
@@ -130,8 +132,8 @@ function Piano() {
 
     // dislikes from recipe_feedback
     const { data: fb } = await supabase.from("recipe_feedback").select("recipe_title, feedback");
-    const dislikes = Array.from(new Set((fb ?? []).filter((f: any) => f.feedback === "dislike").map((f: any) => f.recipe_title).filter(Boolean)));
-    const likes = Array.from(new Set((fb ?? []).filter((f: any) => f.feedback === "like").map((f: any) => f.recipe_title).filter(Boolean)));
+    const dislikes = Array.from(new Set((fb ?? []).filter((f: any) => f.feedback === "disliked").map((f: any) => f.recipe_title).filter(Boolean)));
+    const likes = Array.from(new Set((fb ?? []).filter((f: any) => f.feedback === "liked").map((f: any) => f.recipe_title).filter(Boolean)));
 
     setGenDialog(null);
     setGenerating(true);
@@ -330,21 +332,40 @@ function Piano() {
         })}
       </div>
 
-      <DayDrawer hid={hid} day={openDay} onClose={() => setOpenDay(null)} entriesByDay={entriesByDay} ensurePlan={ensurePlan} weekStartOf={weekStartOf} />
+      <DayDrawer
+        hid={hid}
+        day={openDay}
+        onClose={() => setOpenDay(null)}
+        entriesByDay={entriesByDay}
+        ensurePlan={ensurePlan}
+        weekStartOf={weekStartOf}
+        foodItems={items}
+        prefs={prefs}
+        savedRecipes={saved}
+      />
     </div>
   );
 }
 
-function DayDrawer({ hid, day, onClose, entriesByDay, ensurePlan, weekStartOf }: any) {
+function DayDrawer({ hid, day, onClose, entriesByDay, ensurePlan, weekStartOf, foodItems, prefs, savedRecipes }: any) {
   const qc = useQueryClient();
   const [slot, setSlot] = useState("lunch");
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
+  const [pickerEntry, setPickerEntry] = useState<any>(null);
+  const [pickerSearch, setPickerSearch] = useState("");
+  const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
 
   if (!day) return null;
   const entries = entriesByDay[day] ?? [];
   const d = new Date(day);
   const label = d.toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long" });
+  const warningDays = Number(prefs?.expiry_warning_days ?? 3);
+
+  const ingredientsFor = (e: any) => {
+    const ings = e.recipes?.recipe_ingredients ?? [];
+    return ings.length ? ings : null;
+  };
 
   const add = async () => {
     if (!hid || !title.trim()) return;
@@ -354,12 +375,96 @@ function DayDrawer({ hid, day, onClose, entriesByDay, ensurePlan, weekStartOf }:
     if (error) return toast.error(error.message);
     setTitle(""); setNotes("");
     qc.invalidateQueries({ queryKey: ["plan-month", hid] });
+    qc.invalidateQueries({ queryKey: ["upcoming-meals", hid] });
     toast.success("Pasto aggiunto");
   };
 
   const remove = async (id: string) => {
     await supabase.from("meal_plan_entries").delete().eq("id", id);
     qc.invalidateQueries({ queryKey: ["plan-month", hid] });
+    qc.invalidateQueries({ queryKey: ["upcoming-meals", hid] });
+  };
+
+  const replaceWithSaved = async (entry: any, recipe: any) => {
+    const { error } = await supabase.from("meal_plan_entries").update({
+      recipe_id: recipe.id,
+      recipe_title_snapshot: recipe.title,
+      notes: null,
+    }).eq("id", entry.id);
+    if (error) return toast.error(error.message);
+    setPickerEntry(null);
+    qc.invalidateQueries({ queryKey: ["plan-month", hid] });
+    qc.invalidateQueries({ queryKey: ["upcoming-meals", hid] });
+    toast.success("Pasto sostituito");
+  };
+
+  const regenerateOne = async (entry: any) => {
+    setRegeneratingId(entry.id);
+    try {
+      const dayNames = ["Domenica", "Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato"];
+      const dn = d.getDay();
+      // collect recent + dislikes
+      const sinceDate = new Date(); sinceDate.setDate(sinceDate.getDate() - 28);
+      const { data: planRows } = await supabase.from("meal_plans").select("id").eq("household_id", hid);
+      const planIds = (planRows ?? []).map((p: any) => p.id);
+      let recentTitles: string[] = [];
+      if (planIds.length) {
+        const { data: rec } = await supabase.from("meal_plan_entries")
+          .select("recipe_title_snapshot")
+          .in("meal_plan_id", planIds)
+          .gte("day_date", sinceDate.toISOString().slice(0, 10));
+        recentTitles = Array.from(new Set((rec ?? []).map((r: any) => r.recipe_title_snapshot).filter(Boolean)));
+      }
+      // Always exclude current title so AI proposes different
+      if (entry.recipe_title_snapshot) recentTitles.push(entry.recipe_title_snapshot);
+      const { data: fb } = await supabase.from("recipe_feedback").select("recipe_title, feedback");
+      const dislikes = Array.from(new Set((fb ?? []).filter((f: any) => f.feedback === "disliked").map((f: any) => f.recipe_title).filter(Boolean)));
+      const likes = Array.from(new Set((fb ?? []).filter((f: any) => f.feedback === "liked").map((f: any) => f.recipe_title).filter(Boolean)));
+
+      const { data, error } = await supabase.functions.invoke("ai-suggest-recipes", {
+        body: {
+          foodItems,
+          preferences: prefs,
+          slotsPlan: [{ date: day, slot: entry.slot, dayName: dayNames[dn], weekend: dn === 0 || dn === 6 }],
+          recentTitles,
+          likes,
+          dislikes,
+        },
+      });
+      if (error || data?.error) throw new Error(error?.message ?? data?.error ?? "Errore AI");
+      const r = (data.recipes ?? [])[0];
+      if (!r) throw new Error("Nessuna ricetta proposta");
+      const { error: upErr } = await supabase.from("meal_plan_entries").update({
+        recipe_id: null,
+        recipe_title_snapshot: r.title,
+        notes: r.reason ?? null,
+      }).eq("id", entry.id);
+      if (upErr) throw upErr;
+      qc.invalidateQueries({ queryKey: ["plan-month", hid] });
+      qc.invalidateQueries({ queryKey: ["upcoming-meals", hid] });
+      toast.success(`Nuovo pasto: ${r.title}`);
+    } catch (e: any) {
+      toast.error(e.message ?? "Errore rigenerazione");
+    } finally {
+      setRegeneratingId(null);
+    }
+  };
+
+  const addMissingToShopping = async (entry: any) => {
+    const ings = ingredientsFor(entry);
+    if (!ings) return toast.info("Nessun ingrediente collegato a questa ricetta");
+    const status = getRecipeStatus(ings, foodItems, warningDays);
+    if (!status.missing.length) return toast.success("Hai già tutto!");
+    const { data: existing } = await supabase.from("shopping_list_items").select("name").eq("household_id", hid);
+    const have = new Set((existing ?? []).map((c: any) => c.name.toLowerCase()));
+    const rows = ings
+      .filter((i: any) => status.missing.includes(i.name) && !have.has(i.name.toLowerCase()))
+      .map((i: any) => ({ household_id: hid, name: i.name, quantity: i.quantity ?? 1, unit: i.unit ?? "pz", source: "recipe" }));
+    if (!rows.length) return toast.info("Mancanti già in lista");
+    const { error } = await supabase.from("shopping_list_items").insert(rows);
+    if (error) return toast.error(error.message);
+    qc.invalidateQueries({ queryKey: ["shopping", hid] });
+    toast.success(`${rows.length} ingredienti aggiunti alla spesa`);
   };
 
   return (
@@ -367,16 +472,42 @@ function DayDrawer({ hid, day, onClose, entriesByDay, ensurePlan, weekStartOf }:
       <DrawerContent>
         <DrawerHeader><DrawerTitle className="capitalize">{label}</DrawerTitle></DrawerHeader>
         <div className="px-4 space-y-3 max-h-[50vh] overflow-y-auto">
-          {entries.length === 0 ? <p className="text-sm text-muted-foreground">Nessun pasto pianificato.</p> : entries.map((e: any) => (
-            <div key={e.id} className="flex items-start gap-2 rounded-lg border bg-card p-3">
-              <div className="flex-1 min-w-0">
-                <p className="text-xs uppercase text-muted-foreground">{SLOTS.find((s) => s.v === e.slot)?.l ?? e.slot}</p>
-                <p className="text-sm font-medium">{e.recipe_title_snapshot}</p>
-                {e.notes && <p className="mt-0.5 text-xs text-primary">💡 {e.notes}</p>}
+          {entries.length === 0 ? <p className="text-sm text-muted-foreground">Nessun pasto pianificato.</p> : entries.map((e: any) => {
+            const ings = ingredientsFor(e);
+            const status = ings ? getRecipeStatus(ings, foodItems, warningDays) : null;
+            return (
+              <div key={e.id} className="rounded-lg border bg-card p-3">
+                <div className="flex items-start gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs uppercase text-muted-foreground">{SLOTS.find((s) => s.v === e.slot)?.l ?? e.slot}</p>
+                    <p className="text-sm font-medium">{e.recipe_title_snapshot}</p>
+                    {e.notes && <p className="mt-0.5 text-xs text-primary">💡 {e.notes}</p>}
+                    {status?.hasIngredients && (
+                      <div className="mt-1.5 flex flex-wrap gap-1.5 text-[11px]">
+                        {status.allInPantry ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 px-2 py-0.5"><CheckCircle2 className="h-3 w-3" /> Hai tutto</span>
+                        ) : (
+                          <button onClick={() => addMissingToShopping(e)} className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 px-2 py-0.5 hover:bg-amber-500/25"><AlertCircle className="h-3 w-3" /> Mancano {status.missing.length} → spesa</button>
+                        )}
+                        {status.expiringUsed.length > 0 && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-orange-500/15 text-orange-700 dark:text-orange-300 px-2 py-0.5"><Clock className="h-3 w-3" /> Usa {status.expiringUsed.length} in scadenza</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <Button size="icon" variant="ghost" onClick={() => remove(e.id)}><Trash2 className="h-4 w-4 text-muted-foreground" /></Button>
+                </div>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <Button size="sm" variant="outline" onClick={() => { setPickerEntry(e); setPickerSearch(""); }}>
+                    <Replace className="h-3.5 w-3.5" /> Sostituisci
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => regenerateOne(e)} disabled={regeneratingId === e.id}>
+                    {regeneratingId === e.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />} Rigenera
+                  </Button>
+                </div>
               </div>
-              <Button size="icon" variant="ghost" onClick={() => remove(e.id)}><Trash2 className="h-4 w-4 text-muted-foreground" /></Button>
-            </div>
-          ))}
+            );
+          })}
 
           <div className="rounded-lg border bg-card p-3 space-y-2">
             <p className="text-xs font-semibold uppercase text-muted-foreground">Aggiungi pasto</p>
@@ -391,6 +522,32 @@ function DayDrawer({ hid, day, onClose, entriesByDay, ensurePlan, weekStartOf }:
           </div>
         </div>
         <DrawerFooter><Button variant="outline" onClick={onClose}>Chiudi</Button></DrawerFooter>
+
+        <Dialog open={!!pickerEntry} onOpenChange={(o) => !o && setPickerEntry(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Scegli una ricetta salvata</DialogTitle>
+              <DialogDescription>Sostituirà "{pickerEntry?.recipe_title_snapshot}"</DialogDescription>
+            </DialogHeader>
+            <Input placeholder="Cerca…" value={pickerSearch} onChange={(e) => setPickerSearch(e.target.value)} />
+            <div className="max-h-[40vh] overflow-y-auto space-y-1 mt-2">
+              {(savedRecipes ?? [])
+                .filter((r: any) => !pickerSearch || r.title.toLowerCase().includes(pickerSearch.toLowerCase()))
+                .map((r: any) => (
+                  <button key={r.id} onClick={() => replaceWithSaved(pickerEntry, r)} className="w-full text-left rounded-lg border bg-card p-2.5 hover:bg-secondary/50">
+                    <p className="text-sm font-medium">{r.title}</p>
+                    {r.prep_minutes && <p className="text-xs text-muted-foreground">{r.prep_minutes} min</p>}
+                  </button>
+                ))}
+              {(savedRecipes ?? []).length === 0 && (
+                <p className="text-center text-sm text-muted-foreground py-6">Nessuna ricetta salvata. Salvane qualcuna dalla sezione Ricette.</p>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setPickerEntry(null)}>Annulla</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </DrawerContent>
     </Drawer>
   );
