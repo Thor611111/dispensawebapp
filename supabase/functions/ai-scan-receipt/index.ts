@@ -17,7 +17,7 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
-          { role: "system", content: "Sei un OCR esperto di scontrini italiani della spesa. Estrai gli articoli alimentari (NO buste, sacchetti, sconti totali). Normalizza i nomi in italiano comune (es. 'POMOD CIL' -> 'Pomodori ciliegino'). Quantità in unità coerenti (pz, g, kg, l, ml). Prezzo è il TOTALE di quella riga in euro." },
+          { role: "system", content: "Sei un OCR esperto di scontrini italiani della spesa. Estrai gli articoli alimentari (NO buste, sacchetti). Normalizza i nomi in italiano comune (es. 'POMOD CIL' -> 'Pomodori ciliegino'). Quantità in unità coerenti (pz, g, kg, l, ml). Prezzo è il TOTALE di quella riga in euro. Per ogni riga indica una confidence 0-1 sulla correttezza di nome+prezzo (1 = perfettamente leggibile). Includi anche raw_text con la stringa originale. Restituisci subtotal (somma articoli prima sconti), discounts (totale sconti come numero positivo) e total (totale finale pagato) quando leggibili dallo scontrino." },
           { role: "user", content: [
             { type: "text", text: "Estrai gli articoli e il totale dello scontrino in JSON." },
             { type: "image_url", image_url: { url: imageBase64 } },
@@ -31,7 +31,11 @@ Deno.serve(async (req) => {
               quantity: { type: "number" },
               unit: { type: "string" },
               price: { type: "number" },
+              confidence: { type: "number" },
+              raw_text: { type: "string" },
             }, required: ["name", "price"] } },
+            subtotal: { type: "number" },
+            discounts: { type: "number" },
             total: { type: "number" },
           },
           required: ["items", "total"],
@@ -44,7 +48,12 @@ Deno.serve(async (req) => {
     if (!r.ok) return new Response(JSON.stringify({ error: "Errore AI" }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
     const data = await r.json();
     const args = JSON.parse(data.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments ?? "{}");
-    return new Response(JSON.stringify({ items: args.items ?? [], total: args.total ?? 0 }), { headers: { ...cors, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({
+      items: args.items ?? [],
+      total: args.total ?? 0,
+      subtotal: args.subtotal ?? null,
+      discounts: args.discounts ?? null,
+    }), { headers: { ...cors, "Content-Type": "application/json" } });
   } catch (e) {
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Errore" }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
   }
