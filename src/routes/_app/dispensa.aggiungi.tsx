@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { useHouseholdId, usePantries } from "@/lib/queries";
@@ -23,6 +23,8 @@ function Aggiungi() {
   const { data: pantries = [] } = usePantries(hid);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const search = useSearch({ strict: false }) as { scan?: number | string };
+  const [tab, setTab] = useState<string>(search?.scan ? "barcode" : "manual");
   const [name, setName] = useState("");
   const [qty, setQty] = useState("1");
   const [unit, setUnit] = useState("pz");
@@ -43,6 +45,14 @@ function Aggiungi() {
   const controlsRef = useRef<{ stop: () => void } | null>(null);
 
   useEffect(() => () => { controlsRef.current?.stop(); }, []);
+
+  useEffect(() => {
+    if (search?.scan && tab === "barcode" && !scanning) {
+      // auto-start scanner when arriving via shortcut
+      startScan();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const stopScan = () => {
     controlsRef.current?.stop();
@@ -165,7 +175,7 @@ function Aggiungi() {
   return (
     <div>
       <PageHeader title="Aggiungi alimento" subtitle="Manuale o con l'aiuto dell'AI." />
-      <Tabs defaultValue="manual">
+      <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="w-full">
           <TabsTrigger value="manual" className="flex-1">Manuale</TabsTrigger>
           <TabsTrigger value="barcode" className="flex-1"><Barcode className="mr-1 h-3.5 w-3.5" /> Codice</TabsTrigger>

@@ -1,5 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, useSearch } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useHouseholdId, useShoppingList, useExpenses, usePreferences, useFoodItems, useRecommendedProducts, usePantries, useCurrentMealPlan, currentWeekStart } from "@/lib/queries";
 import { supabase } from "@/integrations/supabase/client";
@@ -39,6 +39,16 @@ function Spesa() {
   const [scanLoading, setScanLoading] = useState(false);
   const [scanResult, setScanResult] = useState<{ items: any[]; total: number } | null>(null);
   const [closing, setClosing] = useState(false);
+  const search = useSearch({ strict: false }) as { scan?: number | string };
+  const [closeTab, setCloseTab] = useState<string>("total");
+
+  useEffect(() => {
+    if (search?.scan) {
+      setCloseTab("scan");
+      setCloseOpen(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const effectivePantry = pantryId || pantries[0]?.id || null;
 
@@ -346,7 +356,7 @@ function Spesa() {
       <Dialog open={closeOpen} onOpenChange={setCloseOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>Chiudi spesa</DialogTitle></DialogHeader>
-          <Tabs defaultValue="total">
+          <Tabs value={closeTab} onValueChange={setCloseTab}>
             <TabsList className="w-full">
               <TabsTrigger value="total" className="flex-1"><Receipt className="mr-1 h-3.5 w-3.5" />Totale</TabsTrigger>
               <TabsTrigger value="scan" className="flex-1"><Camera className="mr-1 h-3.5 w-3.5" />Foto scontrino</TabsTrigger>
