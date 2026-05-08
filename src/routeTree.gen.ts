@@ -19,6 +19,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as JoinCodeRouteImport } from './routes/join.$code'
 import { Route as AdminUtentiRouteImport } from './routes/admin.utenti'
+import { Route as AdminLogsRouteImport } from './routes/admin.logs'
 import { Route as AdminLogEmailRouteImport } from './routes/admin.log-email'
 import { Route as AdminConsoleRouteImport } from './routes/admin.console'
 import { Route as AppSpesaRouteImport } from './routes/_app/spesa'
@@ -87,6 +88,11 @@ const JoinCodeRoute = JoinCodeRouteImport.update({
 const AdminUtentiRoute = AdminUtentiRouteImport.update({
   id: '/utenti',
   path: '/utenti',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminLogsRoute = AdminLogsRouteImport.update({
+  id: '/logs',
+  path: '/logs',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminLogEmailRoute = AdminLogEmailRouteImport.update({
@@ -210,6 +216,7 @@ export interface FileRoutesByFullPath {
   '/spesa': typeof AppSpesaRoute
   '/admin/console': typeof AdminConsoleRoute
   '/admin/log-email': typeof AdminLogEmailRoute
+  '/admin/logs': typeof AdminLogsRoute
   '/admin/utenti': typeof AdminUtentiRoute
   '/join/$code': typeof JoinCodeRoute
   '/admin/': typeof AdminIndexRoute
@@ -240,6 +247,7 @@ export interface FileRoutesByTo {
   '/spesa': typeof AppSpesaRoute
   '/admin/console': typeof AdminConsoleRoute
   '/admin/log-email': typeof AdminLogEmailRoute
+  '/admin/logs': typeof AdminLogsRoute
   '/admin/utenti': typeof AdminUtentiRoute
   '/join/$code': typeof JoinCodeRoute
   '/admin': typeof AdminIndexRoute
@@ -273,6 +281,7 @@ export interface FileRoutesById {
   '/_app/spesa': typeof AppSpesaRoute
   '/admin/console': typeof AdminConsoleRoute
   '/admin/log-email': typeof AdminLogEmailRoute
+  '/admin/logs': typeof AdminLogsRoute
   '/admin/utenti': typeof AdminUtentiRoute
   '/join/$code': typeof JoinCodeRoute
   '/admin/': typeof AdminIndexRoute
@@ -306,6 +315,7 @@ export interface FileRouteTypes {
     | '/spesa'
     | '/admin/console'
     | '/admin/log-email'
+    | '/admin/logs'
     | '/admin/utenti'
     | '/join/$code'
     | '/admin/'
@@ -336,6 +346,7 @@ export interface FileRouteTypes {
     | '/spesa'
     | '/admin/console'
     | '/admin/log-email'
+    | '/admin/logs'
     | '/admin/utenti'
     | '/join/$code'
     | '/admin'
@@ -368,6 +379,7 @@ export interface FileRouteTypes {
     | '/_app/spesa'
     | '/admin/console'
     | '/admin/log-email'
+    | '/admin/logs'
     | '/admin/utenti'
     | '/join/$code'
     | '/admin/'
@@ -470,6 +482,13 @@ declare module '@tanstack/react-router' {
       path: '/utenti'
       fullPath: '/admin/utenti'
       preLoaderRoute: typeof AdminUtentiRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/logs': {
+      id: '/admin/logs'
+      path: '/logs'
+      fullPath: '/admin/logs'
+      preLoaderRoute: typeof AdminLogsRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/log-email': {
@@ -684,6 +703,7 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 interface AdminRouteChildren {
   AdminConsoleRoute: typeof AdminConsoleRoute
   AdminLogEmailRoute: typeof AdminLogEmailRoute
+  AdminLogsRoute: typeof AdminLogsRoute
   AdminUtentiRoute: typeof AdminUtentiRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
@@ -691,6 +711,7 @@ interface AdminRouteChildren {
 const AdminRouteChildren: AdminRouteChildren = {
   AdminConsoleRoute: AdminConsoleRoute,
   AdminLogEmailRoute: AdminLogEmailRoute,
+  AdminLogsRoute: AdminLogsRoute,
   AdminUtentiRoute: AdminUtentiRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
