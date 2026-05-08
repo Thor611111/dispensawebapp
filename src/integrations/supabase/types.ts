@@ -369,6 +369,47 @@ export type Database = {
           },
         ]
       }
+      notification_preferences: {
+        Row: {
+          daily_send_hour: number
+          email_enabled: boolean
+          expiry_alerts: boolean
+          household_id: string
+          push_enabled: boolean
+          shopping_reminders: boolean
+          updated_at: string
+          weekly_plan_reminders: boolean
+        }
+        Insert: {
+          daily_send_hour?: number
+          email_enabled?: boolean
+          expiry_alerts?: boolean
+          household_id: string
+          push_enabled?: boolean
+          shopping_reminders?: boolean
+          updated_at?: string
+          weekly_plan_reminders?: boolean
+        }
+        Update: {
+          daily_send_hour?: number
+          email_enabled?: boolean
+          expiry_alerts?: boolean
+          household_id?: string
+          push_enabled?: boolean
+          shopping_reminders?: boolean
+          updated_at?: string
+          weekly_plan_reminders?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_preferences_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: true
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pantries: {
         Row: {
           created_at: string
@@ -419,6 +460,47 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          household_id: string | null
+          id: string
+          p256dh: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          household_id?: string | null
+          id?: string
+          p256dh: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          household_id?: string | null
+          id?: string
+          p256dh?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       recipe_feedback: {
         Row: {
@@ -708,6 +790,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_household_invite: { Args: { _code: string }; Returns: string }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
