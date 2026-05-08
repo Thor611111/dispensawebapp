@@ -14,8 +14,7 @@ export const InviteEmail = ({ siteName, confirmationUrl }: InviteEmailProps) => 
     heading="Sei stato invitato"
   >
     <Text style={text}>
-      Sei stato invitato a unirti a <strong>{siteName}</strong>. Clicca sul
-      pulsante qui sotto per accettare l'invito e creare il tuo account.
+      Sei stato invitato a unirti a <strong>{siteName}</strong>. Accetta l'invito per creare il tuo account.
     </Text>
     <Cta href={confirmationUrl} label="Accetta invito" />
     <Text style={subtle}>

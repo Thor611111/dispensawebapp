@@ -12,12 +12,12 @@ import { EmailChangeEmail } from '@/lib/email-templates/email-change'
 import { ReauthenticationEmail } from '@/lib/email-templates/reauthentication'
 
 const EMAIL_SUBJECTS: Record<string, string> = {
-  signup: 'Confirm your email',
-  invite: "You've been invited",
-  magiclink: 'Your login link',
-  recovery: 'Reset your password',
-  email_change: 'Confirm your new email',
-  reauthentication: 'Your verification code',
+  signup: 'Conferma la tua email',
+  invite: 'Sei stato invitato',
+  magiclink: 'Il tuo link di accesso',
+  recovery: 'Reimposta la password',
+  email_change: 'Conferma il cambio email',
+  reauthentication: 'Il tuo codice di verifica',
 }
 
 // Template mapping
@@ -31,10 +31,10 @@ const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
 }
 
 // Configuration
-const SITE_NAME = "dispensawebapp"
+const SITE_NAME = "PantryAI"
 const SENDER_DOMAIN = "notify.pantryai.it"
 const ROOT_DOMAIN = "pantryai.it"
-const FROM_DOMAIN = "notify.pantryai.it"
+const FROM_DOMAIN = "pantryai.it"
 
 function redactEmail(email: string | null | undefined): string {
   if (!email) return '***'
@@ -90,8 +90,7 @@ export const Route = createFileRoute("/lovable/email/auth/webhook")({
             }
           }
 
-          const msg = error instanceof Error ? error.message : String(error)
-          console.error('Webhook verification failed', { error: msg })
+          console.error('Webhook verification failed', { error })
           return Response.json(
             { error: 'Invalid webhook payload' },
             { status: 400 }

@@ -13,12 +13,12 @@ export const MagicLinkEmail = ({ siteName, confirmationUrl }: MagicLinkEmailProp
     heading="Accedi al tuo account"
   >
     <Text style={text}>
-      Clicca sul pulsante qui sotto per accedere a <strong>{siteName}</strong>.
-      Il link è valido per pochi minuti.
+      Usa il pulsante qui sotto per accedere in modo sicuro a <strong>{siteName}</strong>.
+      Il link è personale e resta valido solo per pochi minuti.
     </Text>
     <Cta href={confirmationUrl} label="Accedi ora" />
     <Text style={subtle}>
-      Se non hai richiesto questo link, puoi ignorare questa email.
+      Se non hai richiesto questo accesso, puoi ignorare questa email.
     </Text>
   </EmailLayout>
 )

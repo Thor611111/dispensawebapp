@@ -13,14 +13,12 @@ export const RecoveryEmail = ({ siteName, confirmationUrl }: RecoveryEmailProps)
     heading="Reimposta la password"
   >
     <Text style={text}>
-      Abbiamo ricevuto una richiesta di reset password per il tuo account{' '}
-      <strong>{siteName}</strong>. Clicca sul pulsante qui sotto per scegliere
-      una nuova password.
+      Abbiamo ricevuto una richiesta per cambiare la password del tuo account{' '}
+      <strong>{siteName}</strong>. Premi il pulsante per scegliere una nuova password.
     </Text>
     <Cta href={confirmationUrl} label="Reimposta password" />
     <Text style={subtle}>
-      Se non hai richiesto il reset, ignora questa email — la tua password
-      resterà invariata.
+      Se non hai richiesto il recupero password, ignora questa email: la tua password non verrà modificata.
     </Text>
   </EmailLayout>
 )

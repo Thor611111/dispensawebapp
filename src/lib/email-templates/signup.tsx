@@ -12,16 +12,15 @@ interface SignupEmailProps {
 export const SignupEmail = ({ siteName, recipient, confirmationUrl }: SignupEmailProps) => (
   <EmailLayout
     preview={`Conferma la tua email per ${siteName}`}
-    heading="Benvenuto in PantryAI!"
+    heading="Benvenuto in PantryAI"
   >
     <Text style={text}>
-      Grazie per esserti registrato a <strong>{siteName}</strong>. Conferma il
-      tuo indirizzo <strong>{recipient}</strong> per iniziare a gestire la tua
-      dispensa.
+      Grazie per esserti registrato a <strong>{siteName}</strong>. Conferma l'indirizzo{' '}
+      <strong>{recipient}</strong> per iniziare a usare la tua dispensa intelligente.
     </Text>
     <Cta href={confirmationUrl} label="Conferma email" />
     <Text style={subtle}>
-      Se non hai creato un account, puoi ignorare questa email.
+      Se non hai creato tu questo account, puoi ignorare questa email.
     </Text>
   </EmailLayout>
 )

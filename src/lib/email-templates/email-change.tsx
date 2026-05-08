@@ -21,9 +21,8 @@ export const EmailChangeEmail = ({
     heading="Conferma cambio email"
   >
     <Text style={text}>
-      Hai richiesto di cambiare l'indirizzo email del tuo account{' '}
-      <strong>{siteName}</strong> da <strong>{oldEmail}</strong> a{' '}
-      <strong>{newEmail}</strong>.
+      Hai richiesto di cambiare l'indirizzo email del tuo account <strong>{siteName}</strong>{' '}
+      da <strong>{oldEmail}</strong> a <strong>{newEmail}</strong>.
     </Text>
     <Cta href={confirmationUrl} label="Conferma cambio" />
     <Text style={subtle}>
