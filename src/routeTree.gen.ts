@@ -23,6 +23,7 @@ import { Route as AppHomeRouteImport } from './routes/_app/home'
 import { Route as AppDispensaRouteImport } from './routes/_app/dispensa'
 import { Route as AppRicetteNuovaRouteImport } from './routes/_app/ricette.nuova'
 import { Route as AppImpostazioniProfiloRouteImport } from './routes/_app/impostazioni.profilo'
+import { Route as AppImpostazioniPreferenzeRouteImport } from './routes/_app/impostazioni.preferenze'
 import { Route as AppDispensaAggiungiRouteImport } from './routes/_app/dispensa.aggiungi'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
@@ -97,6 +98,12 @@ const AppImpostazioniProfiloRoute = AppImpostazioniProfiloRouteImport.update({
   path: '/profilo',
   getParentRoute: () => AppImpostazioniRoute,
 } as any)
+const AppImpostazioniPreferenzeRoute =
+  AppImpostazioniPreferenzeRouteImport.update({
+    id: '/preferenze',
+    path: '/preferenze',
+    getParentRoute: () => AppImpostazioniRoute,
+  } as any)
 const AppDispensaAggiungiRoute = AppDispensaAggiungiRouteImport.update({
   id: '/aggiungi',
   path: '/aggiungi',
@@ -132,6 +139,7 @@ export interface FileRoutesByFullPath {
   '/ricette': typeof AppRicetteRouteWithChildren
   '/spesa': typeof AppSpesaRoute
   '/dispensa/aggiungi': typeof AppDispensaAggiungiRoute
+  '/impostazioni/preferenze': typeof AppImpostazioniPreferenzeRoute
   '/impostazioni/profilo': typeof AppImpostazioniProfiloRoute
   '/ricette/nuova': typeof AppRicetteNuovaRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
@@ -151,6 +159,7 @@ export interface FileRoutesByTo {
   '/ricette': typeof AppRicetteRouteWithChildren
   '/spesa': typeof AppSpesaRoute
   '/dispensa/aggiungi': typeof AppDispensaAggiungiRoute
+  '/impostazioni/preferenze': typeof AppImpostazioniPreferenzeRoute
   '/impostazioni/profilo': typeof AppImpostazioniProfiloRoute
   '/ricette/nuova': typeof AppRicetteNuovaRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
@@ -172,6 +181,7 @@ export interface FileRoutesById {
   '/_app/ricette': typeof AppRicetteRouteWithChildren
   '/_app/spesa': typeof AppSpesaRoute
   '/_app/dispensa/aggiungi': typeof AppDispensaAggiungiRoute
+  '/_app/impostazioni/preferenze': typeof AppImpostazioniPreferenzeRoute
   '/_app/impostazioni/profilo': typeof AppImpostazioniProfiloRoute
   '/_app/ricette/nuova': typeof AppRicetteNuovaRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
@@ -193,6 +203,7 @@ export interface FileRouteTypes {
     | '/ricette'
     | '/spesa'
     | '/dispensa/aggiungi'
+    | '/impostazioni/preferenze'
     | '/impostazioni/profilo'
     | '/ricette/nuova'
     | '/lovable/email/auth/preview'
@@ -212,6 +223,7 @@ export interface FileRouteTypes {
     | '/ricette'
     | '/spesa'
     | '/dispensa/aggiungi'
+    | '/impostazioni/preferenze'
     | '/impostazioni/profilo'
     | '/ricette/nuova'
     | '/lovable/email/auth/preview'
@@ -232,6 +244,7 @@ export interface FileRouteTypes {
     | '/_app/ricette'
     | '/_app/spesa'
     | '/_app/dispensa/aggiungi'
+    | '/_app/impostazioni/preferenze'
     | '/_app/impostazioni/profilo'
     | '/_app/ricette/nuova'
     | '/lovable/email/auth/preview'
@@ -351,6 +364,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppImpostazioniProfiloRouteImport
       parentRoute: typeof AppImpostazioniRoute
     }
+    '/_app/impostazioni/preferenze': {
+      id: '/_app/impostazioni/preferenze'
+      path: '/preferenze'
+      fullPath: '/impostazioni/preferenze'
+      preLoaderRoute: typeof AppImpostazioniPreferenzeRouteImport
+      parentRoute: typeof AppImpostazioniRoute
+    }
     '/_app/dispensa/aggiungi': {
       id: '/_app/dispensa/aggiungi'
       path: '/aggiungi'
@@ -395,10 +415,12 @@ const AppDispensaRouteWithChildren = AppDispensaRoute._addFileChildren(
 )
 
 interface AppImpostazioniRouteChildren {
+  AppImpostazioniPreferenzeRoute: typeof AppImpostazioniPreferenzeRoute
   AppImpostazioniProfiloRoute: typeof AppImpostazioniProfiloRoute
 }
 
 const AppImpostazioniRouteChildren: AppImpostazioniRouteChildren = {
+  AppImpostazioniPreferenzeRoute: AppImpostazioniPreferenzeRoute,
   AppImpostazioniProfiloRoute: AppImpostazioniProfiloRoute,
 }
 
