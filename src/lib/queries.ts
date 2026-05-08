@@ -28,6 +28,18 @@ export function useProfile() {
   });
 }
 
+export function useIsAdmin() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["isAdmin", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data } = await supabase.rpc("is_current_user_admin");
+      return !!data;
+    },
+  });
+}
+
 export function usePreferences(householdId: string | null | undefined) {
   return useQuery({
     queryKey: ["prefs", householdId],
