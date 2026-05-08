@@ -12,13 +12,12 @@ export const Route = createFileRoute('/api/public/hooks/daily-notifications')({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const secret = process.env.CRON_SECRET
-        const authHeader = request.headers.get('Authorization')
-        if (!secret || authHeader !== `Bearer ${secret}`) {
-          return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 })
-        }
         const SUPABASE_URL = process.env.SUPABASE_URL!
         const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!
+        const authHeader = request.headers.get('Authorization')
+        if (!SERVICE_KEY || authHeader !== `Bearer ${SERVICE_KEY}`) {
+          return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 })
+        }
         const APP_URL = 'https://dispensawebapp.lovable.app'
         const admin = createClient(SUPABASE_URL, SERVICE_KEY, {
           auth: { persistSession: false, autoRefreshToken: false },

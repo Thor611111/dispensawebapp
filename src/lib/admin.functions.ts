@@ -87,10 +87,10 @@ export const triggerDailyNotifications = createServerFn({ method: 'POST' })
   .inputValidator((data: AdminAuthInput) => data)
   .handler(async ({ data: input }) => {
     await getAuthenticatedAdminClient(input.accessToken)
-    // call the public hook directly
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
     const res = await fetch('https://project--30cdf66c-7516-40c8-aa07-54c7f7aae181.lovable.app/api/public/hooks/daily-notifications', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${serviceKey}` },
       body: '{}',
     })
     return await res.json().catch(() => ({ ok: res.ok }))
