@@ -132,8 +132,8 @@ function Piano() {
 
     // dislikes from recipe_feedback
     const { data: fb } = await supabase.from("recipe_feedback").select("recipe_title, feedback");
-    const dislikes = Array.from(new Set((fb ?? []).filter((f: any) => f.feedback === "dislike").map((f: any) => f.recipe_title).filter(Boolean)));
-    const likes = Array.from(new Set((fb ?? []).filter((f: any) => f.feedback === "like").map((f: any) => f.recipe_title).filter(Boolean)));
+    const dislikes = Array.from(new Set((fb ?? []).filter((f: any) => f.feedback === "disliked").map((f: any) => f.recipe_title).filter(Boolean)));
+    const likes = Array.from(new Set((fb ?? []).filter((f: any) => f.feedback === "liked").map((f: any) => f.recipe_title).filter(Boolean)));
 
     setGenDialog(null);
     setGenerating(true);
