@@ -22,6 +22,7 @@ import { Route as AppImpostazioniRouteImport } from './routes/_app/impostazioni'
 import { Route as AppHomeRouteImport } from './routes/_app/home'
 import { Route as AppDispensaRouteImport } from './routes/_app/dispensa'
 import { Route as AppRicetteNuovaRouteImport } from './routes/_app/ricette.nuova'
+import { Route as AppImpostazioniSicurezzaRouteImport } from './routes/_app/impostazioni.sicurezza'
 import { Route as AppImpostazioniScadenzeRouteImport } from './routes/_app/impostazioni.scadenze'
 import { Route as AppImpostazioniProfiloRouteImport } from './routes/_app/impostazioni.profilo'
 import { Route as AppImpostazioniPreferenzeRouteImport } from './routes/_app/impostazioni.preferenze'
@@ -94,6 +95,12 @@ const AppRicetteNuovaRoute = AppRicetteNuovaRouteImport.update({
   path: '/nuova',
   getParentRoute: () => AppRicetteRoute,
 } as any)
+const AppImpostazioniSicurezzaRoute =
+  AppImpostazioniSicurezzaRouteImport.update({
+    id: '/sicurezza',
+    path: '/sicurezza',
+    getParentRoute: () => AppImpostazioniRoute,
+  } as any)
 const AppImpostazioniScadenzeRoute = AppImpostazioniScadenzeRouteImport.update({
   id: '/scadenze',
   path: '/scadenze',
@@ -148,6 +155,7 @@ export interface FileRoutesByFullPath {
   '/impostazioni/preferenze': typeof AppImpostazioniPreferenzeRoute
   '/impostazioni/profilo': typeof AppImpostazioniProfiloRoute
   '/impostazioni/scadenze': typeof AppImpostazioniScadenzeRoute
+  '/impostazioni/sicurezza': typeof AppImpostazioniSicurezzaRoute
   '/ricette/nuova': typeof AppRicetteNuovaRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -169,6 +177,7 @@ export interface FileRoutesByTo {
   '/impostazioni/preferenze': typeof AppImpostazioniPreferenzeRoute
   '/impostazioni/profilo': typeof AppImpostazioniProfiloRoute
   '/impostazioni/scadenze': typeof AppImpostazioniScadenzeRoute
+  '/impostazioni/sicurezza': typeof AppImpostazioniSicurezzaRoute
   '/ricette/nuova': typeof AppRicetteNuovaRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -192,6 +201,7 @@ export interface FileRoutesById {
   '/_app/impostazioni/preferenze': typeof AppImpostazioniPreferenzeRoute
   '/_app/impostazioni/profilo': typeof AppImpostazioniProfiloRoute
   '/_app/impostazioni/scadenze': typeof AppImpostazioniScadenzeRoute
+  '/_app/impostazioni/sicurezza': typeof AppImpostazioniSicurezzaRoute
   '/_app/ricette/nuova': typeof AppRicetteNuovaRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -215,6 +225,7 @@ export interface FileRouteTypes {
     | '/impostazioni/preferenze'
     | '/impostazioni/profilo'
     | '/impostazioni/scadenze'
+    | '/impostazioni/sicurezza'
     | '/ricette/nuova'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -236,6 +247,7 @@ export interface FileRouteTypes {
     | '/impostazioni/preferenze'
     | '/impostazioni/profilo'
     | '/impostazioni/scadenze'
+    | '/impostazioni/sicurezza'
     | '/ricette/nuova'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -258,6 +270,7 @@ export interface FileRouteTypes {
     | '/_app/impostazioni/preferenze'
     | '/_app/impostazioni/profilo'
     | '/_app/impostazioni/scadenze'
+    | '/_app/impostazioni/sicurezza'
     | '/_app/ricette/nuova'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -369,6 +382,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRicetteNuovaRouteImport
       parentRoute: typeof AppRicetteRoute
     }
+    '/_app/impostazioni/sicurezza': {
+      id: '/_app/impostazioni/sicurezza'
+      path: '/sicurezza'
+      fullPath: '/impostazioni/sicurezza'
+      preLoaderRoute: typeof AppImpostazioniSicurezzaRouteImport
+      parentRoute: typeof AppImpostazioniRoute
+    }
     '/_app/impostazioni/scadenze': {
       id: '/_app/impostazioni/scadenze'
       path: '/scadenze'
@@ -437,12 +457,14 @@ interface AppImpostazioniRouteChildren {
   AppImpostazioniPreferenzeRoute: typeof AppImpostazioniPreferenzeRoute
   AppImpostazioniProfiloRoute: typeof AppImpostazioniProfiloRoute
   AppImpostazioniScadenzeRoute: typeof AppImpostazioniScadenzeRoute
+  AppImpostazioniSicurezzaRoute: typeof AppImpostazioniSicurezzaRoute
 }
 
 const AppImpostazioniRouteChildren: AppImpostazioniRouteChildren = {
   AppImpostazioniPreferenzeRoute: AppImpostazioniPreferenzeRoute,
   AppImpostazioniProfiloRoute: AppImpostazioniProfiloRoute,
   AppImpostazioniScadenzeRoute: AppImpostazioniScadenzeRoute,
+  AppImpostazioniSicurezzaRoute: AppImpostazioniSicurezzaRoute,
 }
 
 const AppImpostazioniRouteWithChildren = AppImpostazioniRoute._addFileChildren(
@@ -495,3 +517,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
