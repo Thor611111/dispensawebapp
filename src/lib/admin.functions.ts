@@ -168,7 +168,7 @@ export const triggerDailyNotifications = createServerFn({ method: 'POST' })
 
 // Console command runner -----------------------------------------------------
 
-type CmdResult = { ok: boolean; output: string; data?: unknown }
+type CmdResult = { ok: boolean; output: string }
 
 export const runAdminCommand = createServerFn({ method: 'POST' })
   .inputValidator((d: AuthInput & { command: string }) => d)
@@ -256,9 +256,10 @@ export const runAdminCommand = createServerFn({ method: 'POST' })
       }
       if (g === 'log' && sub === 'tail') {
         const which = args[0]; const n = Number(args[1] ?? 20)
-        const table = which === 'email' ? 'email_send_log' : which === 'push' ? 'push_send_log' : which === 'admin' ? 'admin_activity_log' : null
+        const table: 'email_send_log' | 'push_send_log' | 'admin_activity_log' | null =
+          which === 'email' ? 'email_send_log' : which === 'push' ? 'push_send_log' : which === 'admin' ? 'admin_activity_log' : null
         if (!table) return { ok: false, output: 'usage: log tail <email|push|admin> [n]' }
-        const { data: rows, error } = await (supabaseAdmin.from(table) as any).select('*').order('created_at', { ascending: false }).limit(Math.min(n, 200))
+        const { data: rows, error } = await supabaseAdmin.from(table).select('*').order('created_at', { ascending: false }).limit(Math.min(n, 200))
         if (error) return { ok: false, output: error.message }
         return { ok: true, output: JSON.stringify(rows, null, 2) }
       }
