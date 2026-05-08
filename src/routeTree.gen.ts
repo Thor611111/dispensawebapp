@@ -13,9 +13,13 @@ import { Route as SignupRouteImport } from './routes/signup'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as JoinCodeRouteImport } from './routes/join.$code'
+import { Route as AdminUtentiRouteImport } from './routes/admin.utenti'
+import { Route as AdminLogEmailRouteImport } from './routes/admin.log-email'
 import { Route as AppSpesaRouteImport } from './routes/_app/spesa'
 import { Route as AppRicetteRouteImport } from './routes/_app/ricette'
 import { Route as AppPianoRouteImport } from './routes/_app/piano'
@@ -55,6 +59,11 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppRoute = AppRouteImport.update({
   id: '/_app',
   getParentRoute: () => rootRouteImport,
@@ -64,10 +73,25 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
+} as any)
 const JoinCodeRoute = JoinCodeRouteImport.update({
   id: '/join/$code',
   path: '/join/$code',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AdminUtentiRoute = AdminUtentiRouteImport.update({
+  id: '/utenti',
+  path: '/utenti',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminLogEmailRoute = AdminLogEmailRouteImport.update({
+  id: '/log-email',
+  path: '/log-email',
+  getParentRoute: () => AdminRoute,
 } as any)
 const AppSpesaRoute = AppSpesaRouteImport.update({
   id: '/spesa',
@@ -167,6 +191,7 @@ const ApiPublicHooksDailyNotificationsRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -177,7 +202,10 @@ export interface FileRoutesByFullPath {
   '/piano': typeof AppPianoRoute
   '/ricette': typeof AppRicetteRouteWithChildren
   '/spesa': typeof AppSpesaRoute
+  '/admin/log-email': typeof AdminLogEmailRoute
+  '/admin/utenti': typeof AdminUtentiRoute
   '/join/$code': typeof JoinCodeRoute
+  '/admin/': typeof AdminIndexRoute
   '/dispensa/aggiungi': typeof AppDispensaAggiungiRoute
   '/impostazioni/casa': typeof AppImpostazioniCasaRoute
   '/impostazioni/notifiche': typeof AppImpostazioniNotificheRoute
@@ -203,7 +231,10 @@ export interface FileRoutesByTo {
   '/piano': typeof AppPianoRoute
   '/ricette': typeof AppRicetteRouteWithChildren
   '/spesa': typeof AppSpesaRoute
+  '/admin/log-email': typeof AdminLogEmailRoute
+  '/admin/utenti': typeof AdminUtentiRoute
   '/join/$code': typeof JoinCodeRoute
+  '/admin': typeof AdminIndexRoute
   '/dispensa/aggiungi': typeof AppDispensaAggiungiRoute
   '/impostazioni/casa': typeof AppImpostazioniCasaRoute
   '/impostazioni/notifiche': typeof AppImpostazioniNotificheRoute
@@ -221,6 +252,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
+  '/admin': typeof AdminRouteWithChildren
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -231,7 +263,10 @@ export interface FileRoutesById {
   '/_app/piano': typeof AppPianoRoute
   '/_app/ricette': typeof AppRicetteRouteWithChildren
   '/_app/spesa': typeof AppSpesaRoute
+  '/admin/log-email': typeof AdminLogEmailRoute
+  '/admin/utenti': typeof AdminUtentiRoute
   '/join/$code': typeof JoinCodeRoute
+  '/admin/': typeof AdminIndexRoute
   '/_app/dispensa/aggiungi': typeof AppDispensaAggiungiRoute
   '/_app/impostazioni/casa': typeof AppImpostazioniCasaRoute
   '/_app/impostazioni/notifiche': typeof AppImpostazioniNotificheRoute
@@ -249,6 +284,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
     | '/login'
     | '/onboarding'
     | '/reset-password'
@@ -259,7 +295,10 @@ export interface FileRouteTypes {
     | '/piano'
     | '/ricette'
     | '/spesa'
+    | '/admin/log-email'
+    | '/admin/utenti'
     | '/join/$code'
+    | '/admin/'
     | '/dispensa/aggiungi'
     | '/impostazioni/casa'
     | '/impostazioni/notifiche'
@@ -285,7 +324,10 @@ export interface FileRouteTypes {
     | '/piano'
     | '/ricette'
     | '/spesa'
+    | '/admin/log-email'
+    | '/admin/utenti'
     | '/join/$code'
+    | '/admin'
     | '/dispensa/aggiungi'
     | '/impostazioni/casa'
     | '/impostazioni/notifiche'
@@ -302,6 +344,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_app'
+    | '/admin'
     | '/login'
     | '/onboarding'
     | '/reset-password'
@@ -312,7 +355,10 @@ export interface FileRouteTypes {
     | '/_app/piano'
     | '/_app/ricette'
     | '/_app/spesa'
+    | '/admin/log-email'
+    | '/admin/utenti'
     | '/join/$code'
+    | '/admin/'
     | '/_app/dispensa/aggiungi'
     | '/_app/impostazioni/casa'
     | '/_app/impostazioni/notifiche'
@@ -330,6 +376,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
+  AdminRoute: typeof AdminRouteWithChildren
   LoginRoute: typeof LoginRoute
   OnboardingRoute: typeof OnboardingRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -371,6 +418,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_app': {
       id: '/_app'
       path: ''
@@ -385,12 +439,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/join/$code': {
       id: '/join/$code'
       path: '/join/$code'
       fullPath: '/join/$code'
       preLoaderRoute: typeof JoinCodeRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/admin/utenti': {
+      id: '/admin/utenti'
+      path: '/utenti'
+      fullPath: '/admin/utenti'
+      preLoaderRoute: typeof AdminUtentiRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/log-email': {
+      id: '/admin/log-email'
+      path: '/log-email'
+      fullPath: '/admin/log-email'
+      preLoaderRoute: typeof AdminLogEmailRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/_app/spesa': {
       id: '/_app/spesa'
@@ -587,9 +662,24 @@ const AppRouteChildren: AppRouteChildren = {
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
+interface AdminRouteChildren {
+  AdminLogEmailRoute: typeof AdminLogEmailRoute
+  AdminUtentiRoute: typeof AdminUtentiRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminLogEmailRoute: AdminLogEmailRoute,
+  AdminUtentiRoute: AdminUtentiRoute,
+  AdminIndexRoute: AdminIndexRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
+  AdminRoute: AdminRouteWithChildren,
   LoginRoute: LoginRoute,
   OnboardingRoute: OnboardingRoute,
   ResetPasswordRoute: ResetPasswordRoute,

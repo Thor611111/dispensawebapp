@@ -2,7 +2,7 @@ import { createFileRoute, Outlet, Link, useNavigate, useLocation } from "@tansta
 import { useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useIsAdmin } from "@/lib/queries";
-import { ShieldCheck, LayoutDashboard, Users, Home as HomeIcon, FileText, Activity, Mail, ArrowLeft } from "lucide-react";
+import { ShieldCheck, LayoutDashboard, Users, Mail, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin")({ component: AdminLayout });
