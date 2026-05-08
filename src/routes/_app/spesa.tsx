@@ -1,14 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useHouseholdId, useShoppingList, useExpenses, usePreferences, useFoodItems, useRecommendedProducts, usePantries, currentWeekStart } from "@/lib/queries";
+import { useHouseholdId, useShoppingList, useExpenses, usePreferences, useFoodItems, useRecommendedProducts, usePantries, useCurrentMealPlan, currentWeekStart } from "@/lib/queries";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
-import { Plus, ShoppingBag, Trash2, Sparkles, Loader2, Check, Camera, Receipt } from "lucide-react";
+import { Plus, ShoppingBag, Trash2, Sparkles, Loader2, Check, Camera, Receipt, CalendarDays } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -25,9 +25,11 @@ function Spesa() {
   const { data: foods = [] } = useFoodItems(hid);
   const { data: recs = [] } = useRecommendedProducts(hid);
   const { data: pantries = [] } = usePantries(hid);
+  const { data: currentPlan } = useCurrentMealPlan(hid);
   const qc = useQueryClient();
   const [name, setName] = useState("");
   const [genLoading, setGenLoading] = useState(false);
+  const [planGenLoading, setPlanGenLoading] = useState(false);
   const [pantryId, setPantryId] = useState<string>("");
   const [buyItem, setBuyItem] = useState<any>(null);
   const [buyPrice, setBuyPrice] = useState("");
@@ -213,6 +215,32 @@ function Spesa() {
     qc.invalidateQueries({ queryKey: ["recommended", hid] });
   };
 
+  const generateFromPlan = async () => {
+    if (!hid) return;
+    const entries = (currentPlan as any)?.meal_plan_entries ?? [];
+    if (!entries.length) {
+      return toast.error("Nessun piano pasti per questa settimana. Vai su Piano per generarlo.");
+    }
+    setPlanGenLoading(true);
+    const meals = entries.map((e: any) => ({ title: e.recipe_title_snapshot ?? e.recipes?.title, notes: e.notes }));
+    const { data, error } = await supabase.functions.invoke("ai-plan-to-shopping", {
+      body: { meals, pantry: foods, preferences: prefs },
+    });
+    if (error || data?.error) { setPlanGenLoading(false); return toast.error(error?.message ?? data?.error); }
+    const missing = (data.items ?? []) as any[];
+    const existingNames = new Set(items.map((c: any) => c.name.toLowerCase()));
+    const toInsert = missing
+      .filter((m) => !existingNames.has(m.name.toLowerCase()))
+      .map((m) => ({
+        household_id: hid, name: m.name, quantity: m.quantity ?? 1, unit: m.unit ?? "pz",
+        category: m.category ?? null, source: "plan",
+      }));
+    if (toInsert.length) await supabase.from("shopping_list_items").insert(toInsert);
+    setPlanGenLoading(false);
+    qc.invalidateQueries({ queryKey: ["shopping", hid] });
+    toast.success(toInsert.length ? `${toInsert.length} articoli aggiunti dal piano` : "Tutto già in lista");
+  };
+
   return (
     <div>
       <PageHeader title="Lista spesa" subtitle={total > 0 ? `Stima rimanente: ~${total.toFixed(2)} €` : "Aggiungi cosa ti serve."} />
@@ -243,9 +271,14 @@ function Spesa() {
       <div className="mb-4 rounded-2xl border bg-card p-4">
         <div className="mb-2 flex items-center justify-between">
           <h3 className="text-sm font-semibold">Consigliati per te</h3>
-          <Button size="sm" variant="ghost" onClick={generateRecs} disabled={genLoading}>
-            {genLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />} {recs.length ? "Aggiorna" : "Genera"}
-          </Button>
+          <div className="flex gap-1">
+            <Button size="sm" variant="ghost" onClick={generateFromPlan} disabled={planGenLoading} title="Genera dal piano pasti settimanale">
+              {planGenLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <CalendarDays className="h-3 w-3" />} Dal piano
+            </Button>
+            <Button size="sm" variant="ghost" onClick={generateRecs} disabled={genLoading}>
+              {genLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />} {recs.length ? "Aggiorna" : "Genera"}
+            </Button>
+          </div>
         </div>
         {recs.length === 0 ? (
           <p className="text-xs text-muted-foreground">Tocca "Genera" per ricevere suggerimenti dall'AI.</p>
