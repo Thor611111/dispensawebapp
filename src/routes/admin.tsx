@@ -10,9 +10,7 @@ export const Route = createFileRoute("/admin")({ component: AdminLayout });
 const links = [
   { to: "/admin", label: "Overview", icon: LayoutDashboard, exact: true },
   { to: "/admin/utenti", label: "Utenti", icon: Users },
-  { to: "/admin/contenuti", label: "Contenuti", icon: FileText },
   { to: "/admin/log-email", label: "Log email", icon: Mail },
-  { to: "/admin/log-attivita", label: "Log attività", icon: Activity },
 ];
 
 function AdminLayout() {
