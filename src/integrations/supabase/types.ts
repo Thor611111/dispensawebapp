@@ -659,6 +659,7 @@ export type Database = {
           currency: string
           diets: Database["public"]["Enums"]["diet_type"][]
           dislikes: string[]
+          expiry_warning_days: number
           goals: string[]
           household_id: string
           household_size: number
@@ -671,6 +672,7 @@ export type Database = {
           currency?: string
           diets?: Database["public"]["Enums"]["diet_type"][]
           dislikes?: string[]
+          expiry_warning_days?: number
           goals?: string[]
           household_id: string
           household_size?: number
@@ -683,6 +685,7 @@ export type Database = {
           currency?: string
           diets?: Database["public"]["Enums"]["diet_type"][]
           dislikes?: string[]
+          expiry_warning_days?: number
           goals?: string[]
           household_id?: string
           household_size?: number
