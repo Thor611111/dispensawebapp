@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { getAdminOverview, triggerDailyNotifications } from "@/lib/admin.functions";
-import { Loader2, Users, Home, ChefHat, Package, ShoppingCart, Mail, Bell, Send, Activity, AlertTriangle } from "lucide-react";
+import { Loader2, Users, Home, Mail, Bell, Send, Activity, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth-context";
@@ -47,9 +47,6 @@ function AdminOverview() {
         <Stat icon={Users} label="Utenti totali" value={d.users} />
         <Stat icon={Users} label="Nuovi 7gg" value={d.users_7d} />
         <Stat icon={Home} label="Household" value={d.households} />
-        <Stat icon={ChefHat} label="Ricette" value={d.recipes} />
-        <Stat icon={Package} label="Alimenti" value={d.food_items} />
-        <Stat icon={ShoppingCart} label="Spesa attiva" value={d.shopping_items} />
         <Stat icon={Mail} label="Email 7gg" value={d.emails_7d} />
         <Stat icon={Bell} label="Push 7gg" value={d.push_7d} />
         <Stat icon={AlertTriangle} label="Email fallite 24h" value={d.emails_failed_24h} tone="warn" />

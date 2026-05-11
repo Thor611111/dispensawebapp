@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Plus, Trash2, Refrigerator, Snowflake, Package2, Box, Trash, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import { QuantityStepper } from "@/components/QuantityStepper";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -57,6 +58,13 @@ function Dispensa() {
 
   const remove = async (id: string) => {
     const { error } = await supabase.from("food_items").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    qc.invalidateQueries({ queryKey: ["food", hid] });
+  };
+
+  const updateQty = async (id: string, quantity: number) => {
+    if (quantity <= 0) return remove(id);
+    const { error } = await supabase.from("food_items").update({ quantity }).eq("id", id);
     if (error) return toast.error(error.message);
     qc.invalidateQueries({ queryKey: ["food", hid] });
   };
@@ -157,11 +165,13 @@ function Dispensa() {
                     {badgeText && <Badge variant={badgeVar} className="text-xs">{badgeText}</Badge>}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {it.quantity} {it.unit}
-                    {it.price ? ` · ${Number(it.price).toFixed(2)} €` : ""}
+                    {it.price ? `${Number(it.price).toFixed(2)} €` : ""}
                     {it.category ? ` · ${it.category}` : ""}
                     {it.kcal_per_unit ? ` · ~${Math.round(Number(it.kcal_per_unit) * Number(it.quantity))} kcal` : ""}
                   </p>
+                  <div className="mt-1.5">
+                    <QuantityStepper value={Number(it.quantity ?? 0)} unit={it.unit} onChange={(n) => updateQty(it.id, n)} />
+                  </div>
                 </div>
                 <Button size="icon" variant="ghost" onClick={() => remove(it.id)}>
                   <Trash2 className="h-4 w-4 text-muted-foreground" />

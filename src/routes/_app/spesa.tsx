@@ -16,6 +16,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { reconcileReceipt, type ReceiptRow } from "@/lib/receipt-match";
 import { toast } from "sonner";
+import { QuantityStepper } from "@/components/QuantityStepper";
 
 export const Route = createFileRoute("/_app/spesa")({ component: Spesa });
 
@@ -344,7 +345,18 @@ function Spesa() {
               <Checkbox checked={it.checked} onCheckedChange={(v) => toggle(it.id, !!v)} />
               <div className="flex-1 min-w-0">
                 <p className={`truncate text-sm ${it.checked ? "text-muted-foreground line-through" : ""}`}>{it.name}</p>
-                <p className="text-xs text-muted-foreground">{it.quantity} {it.unit}{it.estimated_price ? ` · ${Number(it.estimated_price).toFixed(2)} €` : ""}</p>
+                {it.estimated_price ? <p className="text-xs text-muted-foreground">{Number(it.estimated_price).toFixed(2)} €</p> : null}
+                <div className="mt-1.5">
+                  <QuantityStepper
+                    value={Number(it.quantity ?? 0)}
+                    unit={it.unit}
+                    onChange={async (n) => {
+                      if (n <= 0) { await supabase.from("shopping_list_items").delete().eq("id", it.id); }
+                      else { await supabase.from("shopping_list_items").update({ quantity: n }).eq("id", it.id); }
+                      qc.invalidateQueries({ queryKey: ["shopping", hid] });
+                    }}
+                  />
+                </div>
               </div>
               <Button size="icon" variant="ghost" onClick={() => openBuy(it)} title="Acquistato"><Check className="h-4 w-4 text-primary" /></Button>
               <Button size="icon" variant="ghost" onClick={() => remove(it.id)}><Trash2 className="h-4 w-4 text-muted-foreground" /></Button>
