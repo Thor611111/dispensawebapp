@@ -18,7 +18,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 
 export const Route = createFileRoute("/admin/utenti")({ component: Page });
 
-type Action = null | { kind: "email" | "name"; user: any } | { kind: "delete"; user: any } | { kind: "impersonate"; url: string };
+type Action = null | { kind: "email" | "name"; user: any } | { kind: "delete" | "reset"; user: any } | { kind: "impersonate"; url: string };
 
 function Page() {
   const { session } = useAuth();
@@ -70,39 +70,40 @@ function Page() {
               <td className="px-3 py-2 text-xs text-muted-foreground">{u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleDateString("it-IT") : "—"}</td>
               <td className="px-3 py-2 text-xs">{u.is_owner ? "👑 Owner" : u.is_admin ? "🛡 Admin" : ""}</td>
               <td className="px-3 py-2 text-right">
+                <div className="inline-flex items-center gap-1">
+                  <Button size="icon" variant="ghost" title="Reset password" onClick={() => setAction({ kind: "reset", user: u })}>
+                    <KeyRound className="h-4 w-4" />
+                  </Button>
+                  <Button size="icon" variant="ghost" title="Cambia email" onClick={() => { setVal(u.email); setAction({ kind: "email", user: u }); }}>
+                    <MailIcon className="h-4 w-4" />
+                  </Button>
+                  <Button size="icon" variant="ghost" title="Cambia nome" onClick={() => { setVal(u.display_name ?? ""); setAction({ kind: "name", user: u }); }}>
+                    <UserIcon className="h-4 w-4" />
+                  </Button>
+                  <Button size="icon" variant="ghost" title="Impersonifica" onClick={async () => {
+                    try {
+                      const r: any = await impersonate({ data: { accessToken: accessToken!, userId: u.id } });
+                      setAction({ kind: "impersonate", url: r.url });
+                    } catch (e: any) { toast.error(e?.message); }
+                  }}>
+                    <UserCheck className="h-4 w-4" />
+                  </Button>
+                  {!u.is_owner && (
+                    <Button size="icon" variant="ghost" title="Elimina account" onClick={() => setAction({ kind: "delete", user: u })}>
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  )}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild><Button size="sm" variant="ghost"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuItem onClick={() => wrap(reset({ data: { accessToken: accessToken!, email: u.email } }), "Email di recupero inviata")}>
-                      <KeyRound className="h-3.5 w-3.5" /> Reset password (email)
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => { setVal(u.email); setAction({ kind: "email", user: u }); }}>
-                      <MailIcon className="h-3.5 w-3.5" /> Cambia email
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => { setVal(u.display_name ?? ""); setAction({ kind: "name", user: u }); }}>
-                      <UserIcon className="h-3.5 w-3.5" /> Cambia nome
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={async () => {
-                      try {
-                        const r: any = await impersonate({ data: { accessToken: accessToken!, userId: u.id } });
-                        setAction({ kind: "impersonate", url: r.url });
-                      } catch (e: any) { toast.error(e?.message); }
-                    }}>
-                      <UserCheck className="h-3.5 w-3.5" /> Impersonifica
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
                     {u.is_owner ? null : (
                       <DropdownMenuItem onClick={() => mRole.mutate({ userId: u.id, grant: !u.is_admin })}>
                         {u.is_admin ? <><ShieldOff className="h-3.5 w-3.5" /> Revoca admin</> : <><Shield className="h-3.5 w-3.5" /> Promuovi admin</>}
                       </DropdownMenuItem>
                     )}
-                    {u.is_owner ? null : (
-                      <DropdownMenuItem className="text-destructive" onClick={() => setAction({ kind: "delete", user: u })}>
-                        <Trash2 className="h-3.5 w-3.5" /> Elimina account
-                      </DropdownMenuItem>
-                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
+                </div>
               </td>
             </tr>
           ))}</tbody>
@@ -146,6 +147,23 @@ function Page() {
               try { await del({ data: { accessToken: accessToken!, userId: action.user.id } }); toast.success("Eliminato"); refresh(); setAction(null); }
               catch (e: any) { toast.error(e?.message); }
             }}>Elimina per sempre</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={action?.kind === "reset"} onOpenChange={(o) => !o && setAction(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Inviare email di reset password?</AlertDialogTitle>
+            <AlertDialogDescription>L'utente {action?.kind === "reset" ? action.user.email : ""} riceverà un link per reimpostare la password.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction onClick={async () => {
+              if (action?.kind !== "reset") return;
+              await wrap(reset({ data: { accessToken: accessToken!, email: action.user.email } }), "Email di recupero inviata");
+              setAction(null);
+            }}>Invia</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
