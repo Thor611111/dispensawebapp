@@ -1,110 +1,53 @@
-## Admin Dashboard — Owner-only, log completi, console comandi, gestione utenti
+## 1. Owner Console — Overview pulita
 
-### 1. Restrizione accesso al solo Owner
+In `src/routes/admin.index.tsx`:
+- Rimuovo le card **Ricette**, **Alimenti**, **Spesa attiva** (e relative icone non usate).
+- Mantengo: Utenti totali, Nuovi 7gg, Household, Email 7gg, Push 7gg, Email/Push fallite 24h, Azioni admin 24h.
+- Lascio il blocco "Notifiche giornaliere" come è.
 
-- Aggiungere ruolo `owner` (oltre ad `admin`) nell'enum `app_role` Postgres.
-- Migrazione che assegna `owner` a `mangino.manuel2@gmail.com` (lookup su `auth.users`).
-- Nuova funzione SQL `is_current_user_owner()` (security definer).
-- Modificare `useIsAdmin` → `useIsOwner` (o aggiungere hook parallelo) e proteggere `/admin/*` solo per owner. Gli admin "normali" perdono accesso alla dashboard.
-- Tutte le RPC admin (`admin_overview`, `admin_list_users`, `admin_set_role`, nuove RPC sotto) richiederanno `is_current_user_owner()`.
+Nessuna modifica all'RPC `admin_overview` (i campi extra restano disponibili ma non vengono mostrati — evitiamo migrazione inutile).
 
-### 2. Pulizia overview
+## 2. Gestione utenti (già presente, miglioro accessibilità)
 
-- Rimuovere widget saldo/spese/`expenses_month` dall'overview.
-- Sostituire con: utenti totali, ultimi accessi, errori 24h, dimensione tabelle principali, code email/push.
+La pagina `/admin/utenti` ha già il menu "⋯" su ogni riga con:
+- Reset password (email magic link)
+- Cambia email
+- Cambia nome
+- Impersonifica
+- Promuovi/Revoca admin
+- Elimina account
 
-### 3. Sezione Log unificata (`/admin/logs`)
+**Migliorie UX**:
+- Sostituisco il menu nascosto con una **toolbar di azioni rapide** sempre visibile per ogni utente (icone con tooltip): reset password, edit email, edit nome, impersonate, delete. Ruoli (promote/revoke admin) restano in dropdown secondario per evitare clic accidentali.
+- Aggiungo conferma anche per "Reset password" (al momento parte senza conferma).
+- Aggiungo colonna "Household" (id breve) per rendere chiaro a quale nucleo appartiene.
 
-Tabs con filtri (data range, livello, ricerca testo) e bottone "Esporta CSV":
-- **Email** (`email_send_log`)
-- **Push** (`push_send_log`)
-- **Attività admin** (`admin_activity_log`)
-- **Auth** (via `supabase--analytics_query` su `auth_logs`) — server fn dedicata
-- **Edge function errors** (via `function_edge_logs`) — server fn dedicata
+Nessuna nuova RPC o server function — uso quelle esistenti in `src/lib/admin.functions.ts`.
 
-Esportazione CSV generata client-side dai dati caricati.
+## 3. Utente — modifica quantità prodotti (dispensa + spesa)
 
-### 4. Console comandi (`/admin/console`)
+**Dispensa** (`src/routes/_app/dispensa.tsx`):
+- Sulla riga di ogni `food_item`, accanto a "{quantity} {unit}", aggiungo controlli `−` / `+` (step intelligente: 1 per `pz`, 50 per `g`/`ml`, 0.1 per `kg`/`l`) e un input numerico inline editabile.
+- Al cambio: `update food_items set quantity = ... where id = ?` + invalidate `["food", hid]`.
+- Se quantità ≤ 0 → propongo eliminazione (toast con undo).
 
-Due modalità affiancate:
+**Spesa** (`src/routes/_app/spesa.tsx`):
+- Stessi controlli `−` / `+` / input sulle righe della shopping list (linea 347).
+- Update via `supabase.from("shopping_list_items").update({ quantity }).eq("id", id)`.
 
-**A. Pulsanti rapidi (form)**
-- Trigger notifiche giornaliere
-- Pulizia inviti scaduti
-- Reinvio email fallite
-- Vacuum log >90gg
-- Refresh statistiche
+**Componente condiviso** `src/components/QuantityStepper.tsx`:
+- Props: `value`, `unit`, `onChange(next)`, `min=0`.
+- Step automatico in base all'unità.
+- Layout compatto adatto a mobile (la viewport è già responsive).
 
-**B. CLI testuale**
-- Input con autocomplete (cmdk già presente)
-- Comandi supportati:
-  - `help`
-  - `user find <email|id>`
-  - `user reset-password <email>` → invia recovery email
-  - `user set-email <id> <newEmail>`
-  - `user set-name <id> <name>`
-  - `user delete <id>`
-  - `user impersonate <id>` → genera magic link, apre in nuova tab
-  - `cron run daily-notifications`
-  - `log tail <email|push|auth|admin> [n]`
-  - `db count <table>`
-- Storico comandi (↑/↓), output area scroll-back.
-- Tutti i comandi passano per **una sola server function** `runAdminCommand({ accessToken, command })` che:
-  - verifica owner
-  - parse + dispatch
-  - logga ogni esecuzione su `admin_activity_log` con metadata (comando, esito)
+Le RLS esistenti (`Members update food`, `Members update shopping`) coprono già queste mutazioni.
 
-### 5. Gestione utenti (`/admin/utenti` — esteso)
+## File toccati
 
-Per ogni riga: menu azioni con
-- Reset password (recovery email via `supabaseAdmin.auth.admin.generateLink type=recovery`)
-- Cambia email (`supabaseAdmin.auth.admin.updateUserById`)
-- Cambia nome (update `profiles.display_name`)
-- Elimina account (riusa logica edge `delete-account` portata in server fn admin)
-- **Impersonifica** → genera magic link, apre in nuova tab (logout di sicurezza dopo)
+- `src/routes/admin.index.tsx` — rimuove 3 stat
+- `src/routes/admin.utenti.tsx` — toolbar azioni + conferma reset
+- `src/components/QuantityStepper.tsx` — nuovo
+- `src/routes/_app/dispensa.tsx` — integrazione stepper
+- `src/routes/_app/spesa.tsx` — integrazione stepper
 
-Dialog di conferma per azioni distruttive. Ogni azione loggata.
-
-### 6. Sicurezza
-
-- Tutte le nuove server fn in `src/lib/admin.functions.ts` (singolo file, già pattern esistente) usano `requireSupabaseAuth` + check `is_current_user_owner` server-side.
-- Operazioni privilegiate (impersonate, deleteUser, updateUserById) usano `supabaseAdmin` solo dopo aver confermato owner.
-- Magic link impersonate scade dopo 60s.
-- Aggiornamento `mem://security` per documentare modello owner-only.
-
-### 7. UI/UX
-
-- Layout admin esistente: aggiungere tab `Console` e `Logs` (Overview, Utenti, Logs, Email, Console).
-- Console: terminale dark con font monospace, output colorato per tipo, prompt `pantryai>`.
-- Tabella log: virtualizzata se >500 righe, paginazione 100.
-
-### Dettagli tecnici
-
-**Migrazione SQL:**
-```text
-ALTER TYPE app_role ADD VALUE 'owner';
-INSERT INTO user_roles (user_id, role)
-  SELECT id, 'owner' FROM auth.users WHERE email='mangino.manuel2@gmail.com'
-  ON CONFLICT DO NOTHING;
-CREATE FUNCTION is_current_user_owner() ...;
--- nuove RPC: admin_reset_user_password, admin_update_user_email,
--- admin_update_user_name, admin_delete_user, admin_impersonate_user,
--- admin_run_command (logging only, esecuzione lato server fn)
-```
-
-**File toccati:**
-- nuova migration
-- `src/lib/admin.functions.ts` (estesa con ~10 nuove server fn)
-- `src/lib/queries.ts` (`useIsOwner`)
-- `src/routes/admin.tsx` (gate owner + nav)
-- `src/routes/admin.index.tsx` (overview pulita)
-- `src/routes/admin.utenti.tsx` (azioni estese)
-- nuovi: `src/routes/admin.console.tsx`, `src/routes/admin.logs.tsx`
-- componente `<AdminConsole />`, `<LogTable />`, `<UserActionsMenu />`
-- rimuovere link admin da `impostazioni.tsx` per non-owner
-
-### Fuori scope
-
-- 2FA per owner (può essere step successivo)
-- Audit storico esportazioni
-- Rate limiting comandi CLI
+Nessuna migrazione DB.
