@@ -28,6 +28,7 @@ import { Route as AppPianoRouteImport } from './routes/_app/piano'
 import { Route as AppImpostazioniRouteImport } from './routes/_app/impostazioni'
 import { Route as AppHomeRouteImport } from './routes/_app/home'
 import { Route as AppDispensaRouteImport } from './routes/_app/dispensa'
+import { Route as AppSpesaStoricoRouteImport } from './routes/_app/spesa.storico'
 import { Route as AppRicetteNuovaRouteImport } from './routes/_app/ricette.nuova'
 import { Route as AppImpostazioniSicurezzaRouteImport } from './routes/_app/impostazioni.sicurezza'
 import { Route as AppImpostazioniScadenzeRouteImport } from './routes/_app/impostazioni.scadenze'
@@ -135,6 +136,11 @@ const AppDispensaRoute = AppDispensaRouteImport.update({
   path: '/dispensa',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSpesaStoricoRoute = AppSpesaStoricoRouteImport.update({
+  id: '/storico',
+  path: '/storico',
+  getParentRoute: () => AppSpesaRoute,
+} as any)
 const AppRicetteNuovaRoute = AppRicetteNuovaRouteImport.update({
   id: '/nuova',
   path: '/nuova',
@@ -213,7 +219,7 @@ export interface FileRoutesByFullPath {
   '/impostazioni': typeof AppImpostazioniRouteWithChildren
   '/piano': typeof AppPianoRoute
   '/ricette': typeof AppRicetteRouteWithChildren
-  '/spesa': typeof AppSpesaRoute
+  '/spesa': typeof AppSpesaRouteWithChildren
   '/admin/console': typeof AdminConsoleRoute
   '/admin/log-email': typeof AdminLogEmailRoute
   '/admin/logs': typeof AdminLogsRoute
@@ -228,6 +234,7 @@ export interface FileRoutesByFullPath {
   '/impostazioni/scadenze': typeof AppImpostazioniScadenzeRoute
   '/impostazioni/sicurezza': typeof AppImpostazioniSicurezzaRoute
   '/ricette/nuova': typeof AppRicetteNuovaRoute
+  '/spesa/storico': typeof AppSpesaStoricoRoute
   '/api/public/hooks/daily-notifications': typeof ApiPublicHooksDailyNotificationsRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -244,7 +251,7 @@ export interface FileRoutesByTo {
   '/impostazioni': typeof AppImpostazioniRouteWithChildren
   '/piano': typeof AppPianoRoute
   '/ricette': typeof AppRicetteRouteWithChildren
-  '/spesa': typeof AppSpesaRoute
+  '/spesa': typeof AppSpesaRouteWithChildren
   '/admin/console': typeof AdminConsoleRoute
   '/admin/log-email': typeof AdminLogEmailRoute
   '/admin/logs': typeof AdminLogsRoute
@@ -259,6 +266,7 @@ export interface FileRoutesByTo {
   '/impostazioni/scadenze': typeof AppImpostazioniScadenzeRoute
   '/impostazioni/sicurezza': typeof AppImpostazioniSicurezzaRoute
   '/ricette/nuova': typeof AppRicetteNuovaRoute
+  '/spesa/storico': typeof AppSpesaStoricoRoute
   '/api/public/hooks/daily-notifications': typeof ApiPublicHooksDailyNotificationsRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -278,7 +286,7 @@ export interface FileRoutesById {
   '/_app/impostazioni': typeof AppImpostazioniRouteWithChildren
   '/_app/piano': typeof AppPianoRoute
   '/_app/ricette': typeof AppRicetteRouteWithChildren
-  '/_app/spesa': typeof AppSpesaRoute
+  '/_app/spesa': typeof AppSpesaRouteWithChildren
   '/admin/console': typeof AdminConsoleRoute
   '/admin/log-email': typeof AdminLogEmailRoute
   '/admin/logs': typeof AdminLogsRoute
@@ -293,6 +301,7 @@ export interface FileRoutesById {
   '/_app/impostazioni/scadenze': typeof AppImpostazioniScadenzeRoute
   '/_app/impostazioni/sicurezza': typeof AppImpostazioniSicurezzaRoute
   '/_app/ricette/nuova': typeof AppRicetteNuovaRoute
+  '/_app/spesa/storico': typeof AppSpesaStoricoRoute
   '/api/public/hooks/daily-notifications': typeof ApiPublicHooksDailyNotificationsRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -327,6 +336,7 @@ export interface FileRouteTypes {
     | '/impostazioni/scadenze'
     | '/impostazioni/sicurezza'
     | '/ricette/nuova'
+    | '/spesa/storico'
     | '/api/public/hooks/daily-notifications'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -358,6 +368,7 @@ export interface FileRouteTypes {
     | '/impostazioni/scadenze'
     | '/impostazioni/sicurezza'
     | '/ricette/nuova'
+    | '/spesa/storico'
     | '/api/public/hooks/daily-notifications'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -391,6 +402,7 @@ export interface FileRouteTypes {
     | '/_app/impostazioni/scadenze'
     | '/_app/impostazioni/sicurezza'
     | '/_app/ricette/nuova'
+    | '/_app/spesa/storico'
     | '/api/public/hooks/daily-notifications'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -547,6 +559,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDispensaRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/spesa/storico': {
+      id: '/_app/spesa/storico'
+      path: '/storico'
+      fullPath: '/spesa/storico'
+      preLoaderRoute: typeof AppSpesaStoricoRouteImport
+      parentRoute: typeof AppSpesaRoute
+    }
     '/_app/ricette/nuova': {
       id: '/_app/ricette/nuova'
       path: '/nuova'
@@ -680,13 +699,25 @@ const AppRicetteRouteWithChildren = AppRicetteRoute._addFileChildren(
   AppRicetteRouteChildren,
 )
 
+interface AppSpesaRouteChildren {
+  AppSpesaStoricoRoute: typeof AppSpesaStoricoRoute
+}
+
+const AppSpesaRouteChildren: AppSpesaRouteChildren = {
+  AppSpesaStoricoRoute: AppSpesaStoricoRoute,
+}
+
+const AppSpesaRouteWithChildren = AppSpesaRoute._addFileChildren(
+  AppSpesaRouteChildren,
+)
+
 interface AppRouteChildren {
   AppDispensaRoute: typeof AppDispensaRouteWithChildren
   AppHomeRoute: typeof AppHomeRoute
   AppImpostazioniRoute: typeof AppImpostazioniRouteWithChildren
   AppPianoRoute: typeof AppPianoRoute
   AppRicetteRoute: typeof AppRicetteRouteWithChildren
-  AppSpesaRoute: typeof AppSpesaRoute
+  AppSpesaRoute: typeof AppSpesaRouteWithChildren
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -695,7 +726,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppImpostazioniRoute: AppImpostazioniRouteWithChildren,
   AppPianoRoute: AppPianoRoute,
   AppRicetteRoute: AppRicetteRouteWithChildren,
-  AppSpesaRoute: AppSpesaRoute,
+  AppSpesaRoute: AppSpesaRouteWithChildren,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
