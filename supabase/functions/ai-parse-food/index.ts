@@ -29,7 +29,7 @@ Deno.serve(async (req) => {
     const body = {
       model: "google/gemini-3-flash-preview",
       messages: [
-        { role: "system", content: "Sei un assistente che estrae alimenti in modo strutturato. Categorie consigliate: Frutta e Verdura, Latticini, Carne e Pesce, Pasta e Cereali, Dispensa, Surgelati, Bevande, Altro. Posizione consigliata (location): fridge, freezer, pantry, other." },
+        { role: "system", content: "Sei un assistente che estrae alimenti in modo strutturato. Categorie consigliate: Frutta e Verdura, Latticini, Carne e Pesce, Pasta e Cereali, Dispensa, Surgelati, Bevande, Altro. Posizione consigliata (location): fridge, freezer, pantry, other. IMPORTANTE: kcal_per_unit deve essere le kcal di ESATTAMENTE 1 unità dell'unit indicata (es. unit='g' → kcal in 1 grammo come 3.5; unit='ml' → kcal in 1 ml come 0.46; unit='pz' → kcal di 1 pezzo come 70 per 1 mela; unit='kg' → kcal in 1 kg; unit='l' → kcal in 1 litro). Usa decimali se necessario." },
         { role: "user", content: userContent },
       ],
       tools: [
@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
                       location: { type: "string", enum: ["fridge", "freezer", "pantry", "other"] },
                       price: { type: "number" },
                       shelf_life_days: { type: "integer", description: "Giorni stimati prima della scadenza dall'oggi" },
-                      kcal_per_unit: { type: "number", description: "Calorie stimate per unità (es. per pz, per 100g, per L)" },
+                      kcal_per_unit: { type: "number", description: "Kcal per 1 unità dell'unit indicata (1g, 1ml, 1pz, 1kg, 1l)." },
                     },
                     required: ["name", "quantity", "unit", "location"],
                   },
