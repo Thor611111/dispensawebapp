@@ -5,14 +5,13 @@ import {
   listAdminUsers, setUserAdminRole,
   adminResetPassword, adminUpdateUserEmail, adminUpdateUserName, adminDeleteUser, adminImpersonate,
 } from "@/lib/admin.functions";
-import { Loader2, MoreVertical, KeyRound, Mail as MailIcon, User as UserIcon, Trash2, UserCheck, Shield, ShieldOff } from "lucide-react";
+import { Loader2, KeyRound, Mail as MailIcon, User as UserIcon, Trash2, UserCheck, Shield, ShieldOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth-context";
 import { useState } from "react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
@@ -52,11 +51,65 @@ function Page() {
 
   const rows = (data as any[]).filter((u) => !filter || u.email?.toLowerCase().includes(filter.toLowerCase()) || u.display_name?.toLowerCase().includes(filter.toLowerCase()));
 
+  const Actions = ({ u }: { u: any }) => (
+    <div className="flex flex-wrap items-center justify-end gap-1">
+      <Button size="icon" variant="ghost" className="h-8 w-8" title="Reset password" onClick={() => setAction({ kind: "reset", user: u })}>
+        <KeyRound className="h-4 w-4" />
+      </Button>
+      <Button size="icon" variant="ghost" className="h-8 w-8" title="Cambia email" onClick={() => { setVal(u.email); setAction({ kind: "email", user: u }); }}>
+        <MailIcon className="h-4 w-4" />
+      </Button>
+      <Button size="icon" variant="ghost" className="h-8 w-8" title="Cambia nome" onClick={() => { setVal(u.display_name ?? ""); setAction({ kind: "name", user: u }); }}>
+        <UserIcon className="h-4 w-4" />
+      </Button>
+      <Button size="icon" variant="ghost" className="h-8 w-8" title="Impersonifica" onClick={async () => {
+        try {
+          const r: any = await impersonate({ data: { accessToken: accessToken!, userId: u.id } });
+          setAction({ kind: "impersonate", url: r.url });
+        } catch (e: any) { toast.error(e?.message); }
+      }}>
+        <UserCheck className="h-4 w-4" />
+      </Button>
+      {!u.is_owner && (
+        <Button size="icon" variant="ghost" className="h-8 w-8" title={u.is_admin ? "Revoca admin" : "Promuovi admin"} onClick={() => mRole.mutate({ userId: u.id, grant: !u.is_admin })}>
+          {u.is_admin ? <ShieldOff className="h-4 w-4" /> : <Shield className="h-4 w-4" />}
+        </Button>
+      )}
+      {!u.is_owner && (
+        <Button size="icon" variant="ghost" className="h-8 w-8" title="Elimina account" onClick={() => setAction({ kind: "delete", user: u })}>
+          <Trash2 className="h-4 w-4 text-destructive" />
+        </Button>
+      )}
+    </div>
+  );
+
   return (
     <div className="space-y-3">
       <Input placeholder="Filtra per email o nome…" value={filter} onChange={(e) => setFilter(e.target.value)} />
-      <div className="overflow-hidden rounded-2xl border bg-card">
-        <table className="w-full text-sm">
+
+      {/* Mobile card view */}
+      <ul className="space-y-2 md:hidden">
+        {rows.map((u) => (
+          <li key={u.id} className="rounded-xl border bg-card p-3">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">{u.display_name ?? "—"}</p>
+                <p className="truncate text-xs text-muted-foreground">{u.email}</p>
+                <p className="mt-1 text-[10px] text-muted-foreground">
+                  Reg. {new Date(u.created_at).toLocaleDateString("it-IT")}
+                  {u.last_sign_in_at ? ` · Login ${new Date(u.last_sign_in_at).toLocaleDateString("it-IT")}` : ""}
+                </p>
+                {(u.is_owner || u.is_admin) && <p className="mt-1 text-[11px]">{u.is_owner ? "👑 Owner" : "🛡 Admin"}</p>}
+              </div>
+            </div>
+            <div className="mt-2 border-t pt-2"><Actions u={u} /></div>
+          </li>
+        ))}
+      </ul>
+
+      {/* Desktop table view */}
+      <div className="hidden overflow-x-auto rounded-2xl border bg-card md:block">
+        <table className="w-full min-w-[760px] text-sm">
           <thead className="bg-secondary/50 text-xs"><tr>
             <th className="px-3 py-2 text-left">Email</th><th className="px-3 py-2 text-left">Nome</th>
             <th className="px-3 py-2 text-left">Registrato</th><th className="px-3 py-2 text-left">Ultimo login</th>
@@ -69,42 +122,7 @@ function Page() {
               <td className="px-3 py-2 text-xs text-muted-foreground">{new Date(u.created_at).toLocaleDateString("it-IT")}</td>
               <td className="px-3 py-2 text-xs text-muted-foreground">{u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleDateString("it-IT") : "—"}</td>
               <td className="px-3 py-2 text-xs">{u.is_owner ? "👑 Owner" : u.is_admin ? "🛡 Admin" : ""}</td>
-              <td className="px-3 py-2 text-right">
-                <div className="inline-flex items-center gap-1">
-                  <Button size="icon" variant="ghost" title="Reset password" onClick={() => setAction({ kind: "reset", user: u })}>
-                    <KeyRound className="h-4 w-4" />
-                  </Button>
-                  <Button size="icon" variant="ghost" title="Cambia email" onClick={() => { setVal(u.email); setAction({ kind: "email", user: u }); }}>
-                    <MailIcon className="h-4 w-4" />
-                  </Button>
-                  <Button size="icon" variant="ghost" title="Cambia nome" onClick={() => { setVal(u.display_name ?? ""); setAction({ kind: "name", user: u }); }}>
-                    <UserIcon className="h-4 w-4" />
-                  </Button>
-                  <Button size="icon" variant="ghost" title="Impersonifica" onClick={async () => {
-                    try {
-                      const r: any = await impersonate({ data: { accessToken: accessToken!, userId: u.id } });
-                      setAction({ kind: "impersonate", url: r.url });
-                    } catch (e: any) { toast.error(e?.message); }
-                  }}>
-                    <UserCheck className="h-4 w-4" />
-                  </Button>
-                  {!u.is_owner && (
-                    <Button size="icon" variant="ghost" title="Elimina account" onClick={() => setAction({ kind: "delete", user: u })}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  )}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild><Button size="sm" variant="ghost"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    {u.is_owner ? null : (
-                      <DropdownMenuItem onClick={() => mRole.mutate({ userId: u.id, grant: !u.is_admin })}>
-                        {u.is_admin ? <><ShieldOff className="h-3.5 w-3.5" /> Revoca admin</> : <><Shield className="h-3.5 w-3.5" /> Promuovi admin</>}
-                      </DropdownMenuItem>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                </div>
-              </td>
+              <td className="px-3 py-2 text-right"><Actions u={u} /></td>
             </tr>
           ))}</tbody>
         </table>
