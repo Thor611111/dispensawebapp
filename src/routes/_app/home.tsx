@@ -4,10 +4,15 @@ import { PageHeader } from "@/components/AppShell";
 import { useHouseholdId, useFoodItems, usePreferences, useExpenses, useProfile, useIsAdmin, currentWeekStart, daysUntil } from "@/lib/queries";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Loader2, Clock, Wallet, Package, ChefHat, ShoppingCart, AlertTriangle, Calendar, ShieldCheck } from "lucide-react";
+import { Sparkles, Loader2, Clock, Wallet, Package, ChefHat, ShoppingCart, AlertTriangle, Calendar, ShieldCheck, RotateCcw } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { InstallAppCard } from "@/components/InstallAppCard";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/_app/home")({ component: Home });
 
@@ -20,6 +25,7 @@ function Home() {
   const { data: expenses = [] } = useExpenses(hid);
   const { data: profile } = useProfile();
   const { data: isAdmin } = useIsAdmin();
+  const qc = useQueryClient();
   const [quick, setQuick] = useState<R[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -36,6 +42,15 @@ function Home() {
   const expiring = items.filter((i) => { const d = daysUntil(i.expires_on); return d !== null && d <= 3; }).length;
 
   const monthLabel = today.toLocaleDateString("it-IT", { month: "long", year: "numeric" });
+
+  const resetPeriod = async (kind: "week" | "month") => {
+    if (!hid) return;
+    const since = kind === "week" ? weekStart : monthStart;
+    const { error } = await supabase.from("expenses").delete().eq("household_id", hid).gte("spent_on", since);
+    if (error) return toast.error(error.message);
+    await qc.invalidateQueries({ queryKey: ["expenses", hid] });
+    toast.success(kind === "week" ? "Saldo settimanale azzerato" : "Spese del mese azzerate");
+  };
 
   const loadQuick = async (force = false) => {
     if (!items.length) return;
@@ -65,21 +80,57 @@ function Home() {
       <InstallAppCard variant="banner" dismissible />
 
       <div className="mb-4 rounded-2xl border bg-card p-5">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-xs uppercase text-muted-foreground">Budget settimanale</p>
             <p className={`mt-1 text-3xl font-bold ${remaining < 0 ? "text-destructive" : ""}`}>{budget > 0 ? `${remaining.toFixed(2)} €` : "—"}</p>
             <p className="text-xs text-muted-foreground">{budget > 0 ? `Speso ${weekSpent.toFixed(2)} di ${budget.toFixed(2)} €` : "Imposta un budget dal Profilo"}</p>
           </div>
-          <Wallet className="h-10 w-10 text-primary" />
+          <div className="flex flex-col items-end gap-2">
+            <Wallet className="h-10 w-10 text-primary" />
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button size="sm" variant="ghost" className="h-7 px-2 text-xs"><RotateCcw className="h-3 w-3" /> Azzera</Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Azzerare il saldo settimanale?</AlertDialogTitle>
+                  <AlertDialogDescription>Verranno eliminate tutte le spese dal {weekStart}. Azione irreversibile.</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Annulla</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => resetPeriod("week")}>Azzera</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         </div>
         {budget > 0 && <Progress value={pct} className="mt-3" />}
       </div>
 
       <div className="mb-4 grid grid-cols-2 gap-3">
         <div className="rounded-xl border bg-card p-4">
-          <p className="text-xs text-muted-foreground">Spesa del mese</p>
-          <p className="mt-1 text-2xl font-bold">{monthSpent.toFixed(2)} €</p>
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">Spesa del mese</p>
+              <p className="mt-1 text-2xl font-bold">{monthSpent.toFixed(2)} €</p>
+            </div>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button size="icon" variant="ghost" className="h-7 w-7" title="Azzera mese"><RotateCcw className="h-3 w-3" /></Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Azzerare le spese del mese?</AlertDialogTitle>
+                  <AlertDialogDescription>Verranno eliminate tutte le spese dal {monthStart}. Azione irreversibile.</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Annulla</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => resetPeriod("month")}>Azzera</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
           {mBudget > 0 && (
             <>
               <Progress value={mPct} className="mt-2" />
