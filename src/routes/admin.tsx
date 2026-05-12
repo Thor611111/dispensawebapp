@@ -36,14 +36,14 @@ function AdminLayout() {
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-30 border-b bg-card/95 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3">
-          <ShieldCheck className="h-5 w-5 text-primary" />
-          <h1 className="text-base font-semibold">Owner Console</h1>
-          <Link to="/home" className="ml-auto inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+        <div className="mx-auto flex max-w-6xl items-center gap-2 px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3">
+          <ShieldCheck className="h-5 w-5 shrink-0 text-primary" />
+          <h1 className="truncate text-sm font-semibold sm:text-base">Owner Console</h1>
+          <Link to="/home" className="ml-auto inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-3 w-3" /> App
           </Link>
         </div>
-        <nav className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-2 pb-2">
+        <nav className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-2 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {links.map((l) => {
             const active = l.exact ? loc.pathname === l.to : loc.pathname.startsWith(l.to);
             return (
@@ -57,7 +57,7 @@ function AdminLayout() {
           })}
         </nav>
       </header>
-      <main className="mx-auto max-w-6xl px-4 py-6"><Outlet /></main>
+      <main className="mx-auto max-w-6xl px-3 py-4 sm:px-4 sm:py-6"><Outlet /></main>
     </div>
   );
 }
