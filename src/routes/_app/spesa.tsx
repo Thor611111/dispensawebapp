@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
-import { Plus, ShoppingBag, Trash2, Sparkles, Loader2, Check, Camera, Receipt, CalendarDays, AlertTriangle, CheckCircle2, HelpCircle, PackagePlus } from "lucide-react";
+import { Plus, ShoppingBag, Trash2, Sparkles, Loader2, Check, Camera, Receipt, CalendarDays, AlertTriangle, CheckCircle2, HelpCircle, PackagePlus, History } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -58,10 +59,10 @@ function Spesa() {
   const effectivePantry = pantryId || pantries[0]?.id || null;
 
   // Ask AI to classify items: location, category, shelf-life, kcal
-  const classifyFoods = async (names: string[]): Promise<Record<string, any>> => {
-    if (!names.length) return {};
+  const classifyFoods = async (items: { name: string; unit?: string | null }[]): Promise<Record<string, any>> => {
+    if (!items.length) return {};
     try {
-      const { data } = await supabase.functions.invoke("ai-classify-foods", { body: { names } });
+      const { data } = await supabase.functions.invoke("ai-classify-foods", { body: { names: items } });
       const map: Record<string, any> = {};
       for (const it of (data?.items ?? [])) map[it.name.toLowerCase()] = it;
       return map;
@@ -112,7 +113,7 @@ function Spesa() {
     const price = buyPrice ? Number(buyPrice) : 0;
     const qty = Number(buyQty) || 1;
     const today = new Date().toISOString().slice(0, 10);
-    const info = await classifyFoods([buyItem.name]);
+    const info = await classifyFoods([{ name: buyItem.name, unit: buyItem.unit ?? "pz" }]);
     const base = {
       household_id: hid, name: buyItem.name, quantity: qty, unit: buyItem.unit ?? "pz",
       location: "pantry" as const, price: price || null, pantry_id: effectivePantry,
@@ -143,7 +144,11 @@ function Spesa() {
     const b64 = await fileToBase64(f);
     const { data, error } = await supabase.functions.invoke("ai-scan-receipt", { body: { imageBase64: b64 } });
     setScanLoading(false);
-    if (error || data?.error) return toast.error(error?.message ?? data?.error);
+    if (error || data?.error) {
+      const msg = error?.message ?? data?.error ?? "Errore scansione scontrino";
+      return toast.error(msg);
+    }
+    if (!data?.items?.length) return toast.error("Nessun articolo riconosciuto. Riprova con una foto pi\u00f9 nitida.");
     const ocrItems = (data.items ?? []) as any[];
     const total = Number(data.total ?? 0);
     setScanResult({ items: ocrItems, total, subtotal: data.subtotal ?? null, discounts: data.discounts ?? null });
@@ -170,7 +175,7 @@ function Spesa() {
     if (!total || total <= 0) return toast.error("Inserisci l'importo totale");
     setClosing(true);
     const today = new Date().toISOString().slice(0, 10);
-    const info = await classifyFoods(checked.map((c) => c.name));
+    const info = await classifyFoods(checked.map((c) => ({ name: c.name, unit: c.unit ?? "pz" })));
     await supabase.from("food_items").insert(checked.map((c) => enrich({
       household_id: hid, name: c.name, quantity: c.quantity, unit: c.unit,
       location: "pantry" as const, price: c.estimated_price, pantry_id: effectivePantry,
@@ -194,7 +199,7 @@ function Spesa() {
     if (total <= 0) return toast.error("Totale spesa non valido");
     setClosing(true);
     const today = new Date().toISOString().slice(0, 10);
-    const info = await classifyFoods(purchasedRows.map((r) => r.name));
+    const info = await classifyFoods(purchasedRows.map((r) => ({ name: r.name, unit: r.unit || "pz" })));
     const foodRows = purchasedRows.map((r) => enrich({
       household_id: hid,
       name: r.name,
