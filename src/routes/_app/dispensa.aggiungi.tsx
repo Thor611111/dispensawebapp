@@ -87,8 +87,18 @@ function Aggiungi() {
         const p = json.product;
         const productName = p.product_name_it || p.product_name || `Prodotto ${code}`;
         setName(productName);
-        const kcalVal = p.nutriments?.["energy-kcal_100g"] ?? p.nutriments?.["energy-kcal"];
-        if (kcalVal) setKcal(String(Math.round(kcalVal)));
+        // Open Food Facts dà kcal per 100g/100ml. Normalizziamo a kcal per 1 unità (g o ml)
+        // e impostiamo unit di conseguenza.
+        const per100 = p.nutriments?.["energy-kcal_100g"];
+        const serving = p.nutriments?.["energy-kcal_serving"];
+        if (per100) {
+          const isLiquid = (p.quantity ?? "").toString().toLowerCase().match(/\b(ml|l|cl)\b/);
+          setUnit(isLiquid ? "ml" : "g");
+          setKcal((Number(per100) / 100).toFixed(2));
+        } else if (serving) {
+          setUnit("pz");
+          setKcal(String(Math.round(serving)));
+        }
         toast.success(`Trovato: ${productName}`);
       } else {
         toast.message(`Codice ${code}: prodotto non trovato. Compila a mano.`);
