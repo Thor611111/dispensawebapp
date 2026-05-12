@@ -284,6 +284,15 @@ function Spesa() {
     <div>
       <PageHeader title="Lista spesa" subtitle={total > 0 ? `Stima rimanente: ~${total.toFixed(2)} €` : "Aggiungi cosa ti serve."} />
 
+      <div className="mb-4 grid grid-cols-2 gap-2">
+        <Button variant="outline" size="sm" onClick={() => { setCloseTab("scan"); setCloseOpen(true); }}>
+          <Camera className="h-4 w-4" /> Scansiona scontrino
+        </Button>
+        <Button asChild variant="outline" size="sm">
+          <Link to="/spesa/storico"><History className="h-4 w-4" /> Storico spese</Link>
+        </Button>
+      </div>
+
       {pantries.length > 0 && (
         <div className="mb-4 rounded-2xl border bg-card p-3">
           <Label className="text-xs text-muted-foreground">Dispensa di destinazione</Label>
