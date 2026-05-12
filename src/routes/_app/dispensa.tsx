@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Trash2, Refrigerator, Snowflake, Package2, Box, Trash, AlertTriangle } from "lucide-react";
+import { Plus, Trash2, Refrigerator, Snowflake, Package2, Box, Trash, AlertTriangle, RotateCcw, Flame, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { QuantityStepper } from "@/components/QuantityStepper";
 import {
@@ -67,6 +67,38 @@ function Dispensa() {
     const { error } = await supabase.from("food_items").update({ quantity }).eq("id", id);
     if (error) return toast.error(error.message);
     qc.invalidateQueries({ queryKey: ["food", hid] });
+  };
+
+  const [stornoItem, setStornoItem] = useState<any>(null);
+  const [recalcId, setRecalcId] = useState<string | null>(null);
+
+  const refund = async () => {
+    if (!hid || !stornoItem) return;
+    const it = stornoItem;
+    const today = new Date().toISOString().slice(0, 10);
+    const amt = it.price ? Number(it.price) : 0;
+    if (amt > 0) {
+      const { error } = await supabase.from("expenses").insert({ household_id: hid, amount: -amt, spent_on: today, note: `Storno: ${it.name}` });
+      if (error) { setStornoItem(null); return toast.error(error.message); }
+    }
+    await supabase.from("food_items").delete().eq("id", it.id);
+    setStornoItem(null);
+    qc.invalidateQueries({ queryKey: ["food", hid] });
+    qc.invalidateQueries({ queryKey: ["expenses", hid] });
+    toast.success(amt > 0 ? `Stornato ${amt.toFixed(2)} \u20ac` : "Alimento rimosso");
+  };
+
+  const recalcKcal = async (it: any) => {
+    setRecalcId(it.id);
+    const { data, error } = await supabase.functions.invoke("ai-calc-kcal", { body: { name: it.name, quantity: 1, unit: it.unit ?? "pz" } });
+    setRecalcId(null);
+    if (error || data?.error) return toast.error(error?.message ?? data?.error ?? "Errore AI");
+    const k = Number(data?.kcal);
+    if (!Number.isFinite(k)) return toast.error("Stima non disponibile");
+    const { error: e2 } = await supabase.from("food_items").update({ kcal_per_unit: k }).eq("id", it.id);
+    if (e2) return toast.error(e2.message);
+    qc.invalidateQueries({ queryKey: ["food", hid] });
+    toast.success(`Aggiornato: ${k} kcal/${it.unit ?? "pz"}`);
   };
 
   const empty = async () => {
@@ -173,14 +205,37 @@ function Dispensa() {
                     <QuantityStepper value={Number(it.quantity ?? 0)} unit={it.unit} onChange={(n) => updateQty(it.id, n)} />
                   </div>
                 </div>
-                <Button size="icon" variant="ghost" onClick={() => remove(it.id)}>
-                  <Trash2 className="h-4 w-4 text-muted-foreground" />
-                </Button>
+                <div className="flex flex-col gap-1">
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => recalcKcal(it)} disabled={recalcId === it.id} title="Ricalcola kcal">
+                    {recalcId === it.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Flame className="h-3.5 w-3.5 text-amber-500" />}
+                  </Button>
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setStornoItem(it)} title="Storna acquisto">
+                    <RotateCcw className="h-3.5 w-3.5 text-muted-foreground" />
+                  </Button>
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => remove(it.id)} title="Elimina">
+                    <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
+                  </Button>
+                </div>
               </li>
             );
           })}
         </ul>
       )}
+
+      <AlertDialog open={!!stornoItem} onOpenChange={(o) => !o && setStornoItem(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Stornare "{stornoItem?.name}"?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {stornoItem?.price ? `Verr\u00e0 rimosso dalla dispensa e accreditati ${Number(stornoItem.price).toFixed(2)} \u20ac sul saldo settimanale.` : "Verr\u00e0 rimosso dalla dispensa. Nessun importo da rimborsare (prezzo non registrato)."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction onClick={refund}>Storna</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {filtered.length > 0 && (
         <AlertDialog>
