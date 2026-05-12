@@ -9,10 +9,13 @@ Deno.serve(async (req) => {
   const authCheck = await requireUser(req);
   if (authCheck instanceof Response) return authCheck;
   try {
-    const { names } = await req.json();
-    if (!Array.isArray(names) || !names.length) {
+    const body = await req.json();
+    const rawNames = body.names;
+    if (!Array.isArray(rawNames) || !rawNames.length) {
       return new Response(JSON.stringify({ items: [] }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
+    // Accept either ["name", ...] or [{name, unit}, ...]
+    const items = rawNames.map((n: any) => typeof n === "string" ? { name: n, unit: "pz" } : { name: n.name, unit: n.unit ?? "pz" });
     const apiKey = Deno.env.get("LOVABLE_API_KEY");
     if (!apiKey) throw new Error("LOVABLE_API_KEY missing");
 
@@ -22,8 +25,8 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
-          { role: "system", content: "Sei un assistente che smista alimenti italiani. Per ogni nome decidi: location (fridge=frigo per latticini/carne/affettati/verdure fresche/uova; freezer=surgelati/gelato; pantry=secchi/scatolame/pasta/biscotti/olio; other=detersivi o non-cibo), una category breve (Frutta e Verdura, Latticini, Carne e Pesce, Pasta e Cereali, Dispensa, Surgelati, Bevande, Altro), shelf_life_days realistico dall'oggi, kcal_per_unit stimate (per pz/100g/L a seconda)." },
-          { role: "user", content: `Classifica questi alimenti: ${JSON.stringify(names)}` },
+          { role: "system", content: "Sei un assistente che smista alimenti italiani. Per ogni alimento decidi: location (fridge=frigo per latticini/carne/affettati/verdure fresche/uova; freezer=surgelati/gelato; pantry=secchi/scatolame/pasta/biscotti/olio; other=detersivi o non-cibo), una category breve (Frutta e Verdura, Latticini, Carne e Pesce, Pasta e Cereali, Dispensa, Surgelati, Bevande, Altro), shelf_life_days realistico, e kcal_per_unit STIMATE PER 1 UNIT\u00c0 dell'unit\u00e0 fornita (es. unit='g' \u2192 kcal in 1 grammo come 3.5 per pasta secca; unit='ml' \u2192 kcal in 1 ml come 0.46 per latte; unit='pz' \u2192 kcal di 1 pezzo come 70 per una mela; unit='kg' \u2192 kcal in 1 kg; unit='l' \u2192 kcal in 1 litro). Restituisci kcal_per_unit con i decimali necessari." },
+          { role: "user", content: `Classifica questi alimenti (rispetta l'unit\u00e0 indicata per kcal_per_unit): ${JSON.stringify(items)}` },
         ],
         tools: [{ type: "function", function: { name: "classify", parameters: {
           type: "object",
