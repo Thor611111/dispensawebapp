@@ -18,6 +18,7 @@ import { Switch } from "@/components/ui/switch";
 import { reconcileReceipt, type ReceiptRow } from "@/lib/receipt-match";
 import { toast } from "sonner";
 import { QuantityStepper } from "@/components/QuantityStepper";
+import { compressImage } from "@/lib/image-compress";
 
 export const Route = createFileRoute("/_app/spesa")({ component: Spesa });
 
@@ -128,12 +129,22 @@ function Spesa() {
     toast.success("Aggiunto in dispensa");
   };
 
-  const fileToBase64 = (file: File): Promise<string> => new Promise((res, rej) => {
-    const r = new FileReader();
-    r.onload = () => res(r.result as string);
-    r.onerror = rej;
-    r.readAsDataURL(file);
+  const blankRow = (idx: number): ReceiptRow => ({
+    key: `manual-${Date.now()}-${idx}`,
+    status: "uncertain",
+    ocr: null,
+    shopping: null,
+    name: "",
+    quantity: 1,
+    unit: "pz",
+    price: null,
+    purchased: true,
+    pantryId: effectivePantry,
+    matchScore: 0,
   });
+
+  const addManualRow = () => setRecRows((rows) => [...rows, blankRow(rows.length)]);
+  const removeRow = (key: string) => setRecRows((rows) => rows.filter((r) => r.key !== key));
 
   const onReceiptFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -141,18 +152,44 @@ function Spesa() {
     setScanLoading(true);
     setScanResult(null);
     setRecRows([]);
-    const b64 = await fileToBase64(f);
+    let b64: string;
+    try {
+      const compressed = await compressImage(f, { maxSize: 1600, quality: 0.8 });
+      b64 = compressed.base64;
+    } catch {
+      // fallback: read raw
+      b64 = await new Promise<string>((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => res(r.result as string);
+        r.onerror = rej;
+        r.readAsDataURL(f);
+      });
+    }
     const { data, error } = await supabase.functions.invoke("ai-scan-receipt", { body: { imageBase64: b64 } });
     setScanLoading(false);
     if (error || data?.error) {
       const msg = error?.message ?? data?.error ?? "Errore scansione scontrino";
-      return toast.error(msg);
+      toast.error(msg + " — puoi inserire gli articoli manualmente qui sotto.");
+      // Fallback: editor manuale con righe dalla lista spuntata o vuoto
+      const fallbackRows = items.length
+        ? reconcileReceipt([], items as any, effectivePantry)
+        : [blankRow(0)];
+      setScanResult({ items: [], total: 0, subtotal: null, discounts: null });
+      setRecRows(fallbackRows.length ? fallbackRows : [blankRow(0)]);
+      return;
     }
-    if (!data?.items?.length) return toast.error("Nessun articolo riconosciuto. Riprova con una foto pi\u00f9 nitida.");
-    const ocrItems = (data.items ?? []) as any[];
-    const total = Number(data.total ?? 0);
-    setScanResult({ items: ocrItems, total, subtotal: data.subtotal ?? null, discounts: data.discounts ?? null });
-    setRecRows(reconcileReceipt(ocrItems, items as any, effectivePantry));
+    const ocrItems = (data?.items ?? []) as any[];
+    const total = Number(data?.total ?? 0);
+    setScanResult({ items: ocrItems, total, subtotal: data?.subtotal ?? null, discounts: data?.discounts ?? null });
+    if (!ocrItems.length) {
+      toast.warning("Nessun articolo riconosciuto. Aggiungili manualmente qui sotto.");
+      const fallbackRows = items.length
+        ? reconcileReceipt([], items as any, effectivePantry)
+        : [blankRow(0)];
+      setRecRows(fallbackRows.length ? fallbackRows : [blankRow(0)]);
+    } else {
+      setRecRows(reconcileReceipt(ocrItems, items as any, effectivePantry));
+    }
     setRecTotal(total ? String(total.toFixed(2)) : "");
     if (!totalAmount && total) setTotalAmount(String(total));
   };
