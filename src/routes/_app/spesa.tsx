@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
-import { Plus, ShoppingBag, Trash2, Sparkles, Loader2, Check, Camera, Receipt, CalendarDays, AlertTriangle, CheckCircle2, HelpCircle, PackagePlus, History } from "lucide-react";
+import { Plus, ShoppingBag, Trash2, Sparkles, Loader2, Check, Camera, Receipt, CalendarDays, AlertTriangle, CheckCircle2, HelpCircle, PackagePlus, History, X } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -463,14 +463,18 @@ function Spesa() {
                 </div>
                 <input type="file" accept="image/*" capture="environment" className="hidden" onChange={onReceiptFile} disabled={scanLoading} />
               </Label>
-              {scanResult && recRows.length > 0 && (
+              {recRows.length > 0 && (
                 <div className="space-y-3">
-                  <div className="rounded-lg bg-secondary/30 p-2 text-xs text-muted-foreground">
-                    OCR: {scanResult.items.length} articoli rilevati
-                    {scanResult.subtotal != null ? ` · subtot ${Number(scanResult.subtotal).toFixed(2)} €` : ""}
-                    {scanResult.discounts ? ` · sconti ${Number(scanResult.discounts).toFixed(2)} €` : ""}
-                    {scanResult.total ? ` · totale ${scanResult.total.toFixed(2)} €` : ""}
-                  </div>
+                  {scanResult && (
+                    <div className="rounded-lg bg-secondary/30 p-2 text-xs text-muted-foreground">
+                      {scanResult.items.length > 0
+                        ? <>OCR: {scanResult.items.length} articoli rilevati</>
+                        : <>OCR non disponibile · inserisci manualmente</>}
+                      {scanResult.subtotal != null ? ` · subtot ${Number(scanResult.subtotal).toFixed(2)} €` : ""}
+                      {scanResult.discounts ? ` · sconti ${Number(scanResult.discounts).toFixed(2)} €` : ""}
+                      {scanResult.total ? ` · totale ${scanResult.total.toFixed(2)} €` : ""}
+                    </div>
+                  )}
                   <ul className="max-h-[50vh] space-y-2 overflow-auto pr-1">
                     {recRows.map((r) => {
                       const StatusIcon = r.status === "matched" ? CheckCircle2 : r.status === "missing_from_list" ? PackagePlus : HelpCircle;
@@ -486,6 +490,9 @@ function Spesa() {
                                 <div className="flex items-center gap-1.5">
                                   <span className="text-xs text-muted-foreground">Acquistato</span>
                                   <Switch checked={r.purchased} onCheckedChange={(v) => updateRow(r.key, { purchased: !!v })} />
+                                  <Button type="button" size="icon" variant="ghost" className="h-6 w-6" onClick={() => removeRow(r.key)} title="Rimuovi riga">
+                                    <X className="h-3.5 w-3.5" />
+                                  </Button>
                                 </div>
                               </div>
                               <Input value={r.name} onChange={(e) => updateRow(r.key, { name: e.target.value })} className="h-8 text-sm" />
@@ -515,6 +522,9 @@ function Spesa() {
                       );
                     })}
                   </ul>
+                  <Button type="button" variant="outline" size="sm" className="w-full" onClick={addManualRow}>
+                    <Plus className="h-3.5 w-3.5" /> Aggiungi riga manuale
+                  </Button>
                   <div className="rounded-xl border bg-card p-3 text-sm">
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">Articoli confermati</span>
