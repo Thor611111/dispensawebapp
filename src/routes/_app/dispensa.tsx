@@ -41,6 +41,8 @@ function Dispensa() {
   const [newPantryName, setNewPantryName] = useState("");
   const [openPantryDialog, setOpenPantryDialog] = useState(false);
   const search = useSearch({ from: "/_app/dispensa" });
+  const [stornoItem, setStornoItem] = useState<any>(null);
+  const [recalcId, setRecalcId] = useState<string | null>(null);
 
   useEffect(() => {
     if (search.filter === "expiring") setExpiringOnly(true);
@@ -68,9 +70,6 @@ function Dispensa() {
     if (error) return toast.error(error.message);
     qc.invalidateQueries({ queryKey: ["food", hid] });
   };
-
-  const [stornoItem, setStornoItem] = useState<any>(null);
-  const [recalcId, setRecalcId] = useState<string | null>(null);
 
   const refund = async () => {
     if (!hid || !stornoItem) return;
