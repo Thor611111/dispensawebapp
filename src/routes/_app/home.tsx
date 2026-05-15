@@ -4,15 +4,11 @@ import { PageHeader } from "@/components/AppShell";
 import { useHouseholdId, useFoodItems, usePreferences, useExpenses, useProfile, useIsAdmin, currentWeekStart, daysUntil } from "@/lib/queries";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Loader2, Clock, Wallet, Package, ChefHat, ShoppingCart, AlertTriangle, Calendar, ShieldCheck, RotateCcw } from "lucide-react";
+import { Sparkles, Loader2, Clock, Wallet, Package, ChefHat, ShoppingCart, AlertTriangle, Calendar, ShieldCheck, BarChart3 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { InstallAppCard } from "@/components/InstallAppCard";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/_app/home")({ component: Home });
 
@@ -25,32 +21,19 @@ function Home() {
   const { data: expenses = [] } = useExpenses(hid);
   const { data: profile } = useProfile();
   const { data: isAdmin } = useIsAdmin();
-  const qc = useQueryClient();
+  useQueryClient();
   const [quick, setQuick] = useState<R[]>([]);
   const [loading, setLoading] = useState(false);
 
   const weekStart = currentWeekStart();
   const today = new Date();
-  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
   const weekSpent = expenses.filter((e) => e.spent_on >= weekStart).reduce((s, e) => s + Number(e.amount), 0);
-  const monthSpent = expenses.filter((e) => e.spent_on >= monthStart).reduce((s, e) => s + Number(e.amount), 0);
   const budget = prefs?.weekly_budget ? Number(prefs.weekly_budget) : 0;
   const remaining = budget - weekSpent;
   const pct = budget > 0 ? Math.min(100, (weekSpent / budget) * 100) : 0;
-  const mBudget = prefs?.monthly_budget ? Number(prefs.monthly_budget) : 0;
-  const mPct = mBudget > 0 ? Math.min(100, (monthSpent / mBudget) * 100) : 0;
   const expiring = items.filter((i) => { const d = daysUntil(i.expires_on); return d !== null && d <= 3; }).length;
 
   const monthLabel = today.toLocaleDateString("it-IT", { month: "long", year: "numeric" });
-
-  const resetPeriod = async (kind: "week" | "month") => {
-    if (!hid) return;
-    const since = kind === "week" ? weekStart : monthStart;
-    const { error } = await supabase.from("expenses").delete().eq("household_id", hid).gte("spent_on", since);
-    if (error) return toast.error(error.message);
-    await qc.invalidateQueries({ queryKey: ["expenses", hid] });
-    toast.success(kind === "week" ? "Saldo settimanale azzerato" : "Spese del mese azzerate");
-  };
 
   const loadQuick = async (force = false) => {
     if (!items.length) return;
@@ -58,6 +41,8 @@ function Home() {
     if (!force) {
       const cached = localStorage.getItem(cacheKey);
       if (cached) { setQuick(JSON.parse(cached)); return; }
+      // already loaded today in memory? skip extra fetch
+      if (quick.length) return;
     }
     setLoading(true);
     const { data, error } = await supabase.functions.invoke("ai-suggest-recipes", { body: { foodItems: items, preferences: prefs, count: 2 } });
@@ -68,7 +53,8 @@ function Home() {
     localStorage.setItem(cacheKey, JSON.stringify(r));
   };
 
-  useEffect(() => { if (hid && items.length) loadQuick(); /* eslint-disable-next-line */ }, [hid, items.length]);
+  // Carica una sola volta al primo avere hid+items: la cache giornaliera evita chiamate ripetute.
+  useEffect(() => { if (hid && items.length && !quick.length) loadQuick(); /* eslint-disable-next-line */ }, [hid, items.length > 0]);
 
   const firstName = (profile?.display_name ?? "").trim().split(/\s+/)[0];
   const greeting = firstName ? `Ciao, ${firstName} 👋` : "Ciao 👋";
@@ -79,73 +65,35 @@ function Home() {
 
       <InstallAppCard variant="banner" dismissible />
 
-      <div className="mb-4 rounded-2xl border bg-card p-5">
+      <Link to="/statistiche" className="mb-4 block rounded-2xl border bg-card p-5 transition-colors hover:bg-secondary/40">
         <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-xs uppercase text-muted-foreground">Budget settimanale</p>
-            <p className={`mt-1 text-3xl font-bold ${remaining < 0 ? "text-destructive" : ""}`}>{budget > 0 ? `${remaining.toFixed(2)} €` : "—"}</p>
-            <p className="text-xs text-muted-foreground">{budget > 0 ? `Speso ${weekSpent.toFixed(2)} di ${budget.toFixed(2)} €` : "Imposta un budget dal Profilo"}</p>
+          <div className="min-w-0">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Budget settimanale</p>
+            <p className={`mt-1 text-3xl font-bold ${budget > 0 && remaining < 0 ? "text-danger" : ""}`}>
+              {budget > 0 ? `${remaining.toFixed(2)} €` : "—"}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {budget > 0 ? `Speso ${weekSpent.toFixed(2)} di ${budget.toFixed(2)} €` : "Tocca per impostare un budget"}
+            </p>
           </div>
-          <div className="flex flex-col items-end gap-2">
-            <Wallet className="h-10 w-10 text-primary" />
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button size="sm" variant="ghost" className="h-7 px-2 text-xs"><RotateCcw className="h-3 w-3" /> Azzera</Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Azzerare il saldo settimanale?</AlertDialogTitle>
-                  <AlertDialogDescription>Verranno eliminate tutte le spese dal {weekStart}. Azione irreversibile.</AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Annulla</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => resetPeriod("week")}>Azzera</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
+          <Wallet className="h-10 w-10 text-primary" />
         </div>
         {budget > 0 && <Progress value={pct} className="mt-3" />}
-      </div>
+      </Link>
 
       <div className="mb-4 grid grid-cols-2 gap-3">
-        <div className="rounded-xl border bg-card p-4">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <p className="text-xs text-muted-foreground">Spesa del mese</p>
-              <p className="mt-1 text-2xl font-bold">{monthSpent.toFixed(2)} €</p>
-            </div>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button size="icon" variant="ghost" className="h-7 w-7" title="Azzera mese"><RotateCcw className="h-3 w-3" /></Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Azzerare le spese del mese?</AlertDialogTitle>
-                  <AlertDialogDescription>Verranno eliminate tutte le spese dal {monthStart}. Azione irreversibile.</AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Annulla</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => resetPeriod("month")}>Azzera</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
-          {mBudget > 0 && (
-            <>
-              <Progress value={mPct} className="mt-2" />
-              <p className="mt-1 text-[10px] text-muted-foreground">di {mBudget.toFixed(0)} €</p>
-            </>
-          )}
-        </div>
-        <div className="rounded-xl border bg-card p-4">
+        <Link to="/statistiche" className="rounded-xl border bg-card p-4 transition-colors hover:bg-secondary/40">
+          <p className="text-xs text-muted-foreground">Speso questa settimana</p>
+          <p className="mt-1 text-2xl font-bold">{weekSpent.toFixed(2)} €</p>
+        </Link>
+        <Link to="/dispensa" search={{ filter: "expiring" }} className="rounded-xl border bg-card p-4 transition-colors hover:bg-secondary/40">
           <p className="text-xs text-muted-foreground">In scadenza ≤3g</p>
-          <p className={`mt-1 text-2xl font-bold ${expiring > 0 ? "text-destructive" : ""}`}>{expiring}</p>
-        </div>
+          <p className={`mt-1 text-2xl font-bold ${expiring > 0 ? "text-danger" : ""}`}>{expiring}</p>
+        </Link>
       </div>
 
       {expiring > 0 && (
-        <Link to="/dispensa" className="mb-4 flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+        <Link to="/dispensa" search={{ filter: "expiring" }} className="mb-4 flex items-center gap-2 rounded-xl border border-danger/30 bg-danger/5 p-3 text-sm text-danger">
           <AlertTriangle className="h-4 w-4" /> Hai {expiring} alimenti che scadono presto
         </Link>
       )}
@@ -155,7 +103,7 @@ function Home() {
         <Link to="/ricette" className="flex flex-col items-center gap-1 rounded-xl border bg-card p-3 text-xs"><ChefHat className="h-5 w-5 text-primary" /> Ricette</Link>
         <Link to="/piano" className="flex flex-col items-center gap-1 rounded-xl border bg-card p-3 text-xs"><Calendar className="h-5 w-5 text-primary" /> Piano</Link>
         <Link to="/spesa" className="flex flex-col items-center gap-1 rounded-xl border bg-card p-3 text-xs"><ShoppingCart className="h-5 w-5 text-primary" /> Spesa</Link>
-        <Link to="/impostazioni" className="flex flex-col items-center gap-1 rounded-xl border bg-card p-3 text-[10px]"><Wallet className="h-5 w-5 text-primary" /> Budget</Link>
+        <Link to="/statistiche" className="flex flex-col items-center gap-1 rounded-xl border bg-card p-3 text-[10px]"><BarChart3 className="h-5 w-5 text-primary" /> Stats</Link>
       </div>
 
       <div className="mb-2 flex items-center justify-between">

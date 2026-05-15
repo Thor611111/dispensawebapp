@@ -1,149 +1,90 @@
 
-# Roadmap miglioramenti PantryAI
+# Sprint 3 — Statistiche, riorganizzazione, restyling, fix
 
-Audit basato su schema DB, edge functions esistenti e route attuali. Priorità: **P0** = bug/blocking, **P1** = alto impatto basso sforzo, **P2** = feature di valore, **P3** = visione/polish.
+## 1. Riorganizzazione sezioni (cosa va dove)
 
----
+Oggi `Spesa` mescola troppe cose (scontrino + budget + lista) e la `Home` duplica metriche. Nuovo modello:
 
-## 1. Spesa & Scontrino
+| Tab | Ruolo | Contenuti |
+|---|---|---|
+| **Home** | dashboard giornaliera | saluto, scadenze imminenti, ricette rapide da dispensa, CTA piano di oggi, install card |
+| **Dispensa** | inventario | lista food_items + filtri/ricerca/badge scadenza (P1 sprint 2 base, qui solo polish) |
+| **Ricette** | catalogo | nessuna modifica strutturale |
+| **Piano** | settimana | nessuna modifica strutturale |
+| **Spesa** | flusso d'acquisto | lista spesa + scan scontrino + chiusura/storno (rimuove riassunto budget, va in Statistiche) |
+| **Statistiche** *(NUOVA)* | analisi & budget | budget settimanale/mensile, grafici, forecast, top categorie, export |
+| **Impostazioni** | invariata | |
 
-### P0 — Affidabilità scan
-- **Fallback OCR**: se `ai-scan-receipt` ritorna 0 prodotti, mostrare editor manuale pre-compilato col totale, non un errore. Logghiamo motivo (immagine sfocata, formato non supportato).
-- **Compressione immagine lato client** prima dell'upload (max 1600px lato lungo, JPEG q80) — riduce 70% dei timeout Gemini.
-- **Anteprima riga-per-riga modificabile** prima della conferma: oggi se l'AI sbaglia un prezzo si importa già sbagliato.
+Spostamenti chiave:
+- **Home** perde i due budget bar duplicati (settimana+mese) → resta solo un mini-widget "Budget settimanale" con link a Statistiche.
+- **Spesa** perde il blocco budget settimanale in cima (oggi righe 270-352) → resta solo "totale ultimo scontrino" e CTA chiusura.
+- **Statistiche** centralizza budget editing (oggi sparso tra Home/Spesa/Impostazioni preferenze) e analisi.
 
-### P1 — Workflow
-- **Storno parziale** (cambia quantità/prezzo) oltre allo storno totale già esistente.
-- **Rettifica saldo manuale** già richiesta: aggiungere campo `note` obbligatoria + tipo (`rettifica`/`rimborso`) su `expenses` per audit.
-- **Matching auto con lista spesa**: quando importi scontrino, spunta gli `shopping_list_items` corrispondenti (fuzzy match nome).
-- **Categorizzazione automatica** dei prodotti scontrino via `ai-classify-foods` in batch (oggi sembra 1-by-1).
+Bottom nav resta a 6 voci ma sostituiamo l'ordine: Home · Dispensa · Piano · Spesa · Statistiche · Impostazioni (Ricette si raggiunge da Home/Piano, era poco usato come tab principale — alternativa: lasciamo Ricette e mettiamo Statistiche dentro Home come card link. Vedi nota in fondo.)
 
-### P2 — Nuove feature
-- **Storico scontrini con immagine**: bucket privato `receipts/`, link sull'`expense`.
-- **Confronto prezzi nel tempo**: stesso prodotto in supermercati diversi → suggerisce dove conviene.
-- **Import da email/PDF** (Esselunga, Conad mandano ricevute digitali).
+## 2. Pagina /statistiche (nuova)
 
----
+File: `src/routes/_app/statistiche.tsx`. Stack: Recharts (già nel progetto via `src/components/ui/chart.tsx`).
 
-## 2. Dispensa
+Sezioni:
+1. **Periodo selector** — Settimana / Mese / 3 mesi (tabs)
+2. **KPI cards** — Speso, Budget, Δ vs periodo precedente, Forecast fine periodo
+3. **Linea spesa cumulativa vs budget proiettato** — AreaChart con linea budget tratteggiata
+4. **Top categorie** — BarChart orizzontale (deriva categoria da `food_items` matchati o da `expenses.note` parsed)
+5. **Spesa per membro** — pie chart su `expenses.created_by` con join `profiles`
+6. **Spesa per dispensa** — bar chart su `food_items.pantry_id`
+7. **Insight forecast** — testo: "al ritmo attuale chiuderai il mese a X€ (±Y vs budget)"
+8. **Export CSV** — download `expenses_YYYY-MM.csv` lato client
+9. **Editor budget** — input weekly/monthly inline (sostituisce edit in altre pagine)
 
-### P0 — Kcal corrette
-- Verificare che `ai-parse-food` ritorni `kcal_per_unit` consistente (per 100g vs per pezzo). Aggiungere campo `kcal_basis` (`per_100g` | `per_unit`) per evitare ambiguità.
-- **Job di ricalcolo batch** già richiesto: rendere idempotente e mostrare progresso.
+Tutto client-side: query esistenti `useExpenses` + nuove derivazioni con `useMemo`. Niente nuove edge function in questo sprint (anomaly AI rimandato a sprint successivo).
 
-### P1 — UX
-- **Ricerca + filtri** (categoria, scadenza, dispensa) — oggi solo lista lineare.
-- **Bulk actions**: seleziona N item → sposta dispensa / elimina / aggiungi a lista spesa.
-- **Indicatore "in scadenza"** con badge colorato (verde/giallo/rosso) basato su `expiry_warning_days`.
-- **Quick-add da preferiti**: prodotti più usati in un tab dedicato (`last_used_at` già presente).
+## 3. Restyling UI (più confortevole)
 
-### P2 — Automazioni
-- **Decremento automatico** quando cucini una ricetta dal piano (oggi non aggancia gli ingredienti).
-- **Suggerimento riordino**: prodotto sotto soglia → push in lista spesa.
-- **Barcode scanner** (camera + OpenFoodFacts API) → aggiunta in 2 secondi.
+Cambi trasversali, no nuove dipendenze:
+- **PageHeader**: aggiungere variante con sticky background + ombra leggera allo scroll, padding più ariato (oggi `mb-6`, passa a `mb-8` con divider sottile).
+- **Card density**: passare da `p-6` a `p-5` su mobile per ridurre scroll, gap interni `gap-3`.
+- **Bottom nav**: aggiungere pill attiva (background `primary/10` rounded) invece del solo cambio colore — più leggibile su mobile.
+- **Empty states uniformi**: nuovo componente `<EmptyState icon title description action />` riusato in dispensa/piano/spesa/statistiche vuote.
+- **Skeleton uniformi**: nuovo `<ListSkeleton rows={n} />` riusato al posto degli spinner sparsi.
+- **Token colore semantici**: aggiungere in `styles.css` `--surface-elevated`, `--success`, `--warning`, `--danger` per badge scadenza coerenti (oggi mix verde/giallo/rosso hard-coded).
+- **Type scale**: H1 `text-2xl`→ `text-[1.6rem]` con tracking ridotto, body `text-[0.95rem]`.
+- **Transizioni soft** (`transition-colors duration-200`) su tab attivo, card hover.
 
----
+## 4. Bug fix
 
-## 3. Piano pasti & Ricette
+Audit mirato durante l'implementazione:
+- **Hook order** su `home.tsx`, `piano.tsx`, `ricette.tsx` (controllo già fatto su `dispensa.tsx`): assicurare che ogni `if (!hid) return` stia DOPO tutti gli `useState/useQuery/useMemo`.
+- **Home `loadQuick`**: oggi cache key cambia ogni giorno e re-trigger ad ogni cambio `items.length` → throttle a 1 chiamata/giorno e niente refetch automatico se cache hit.
+- **Spesa scan dialog**: `closeTab` rimane su "scan" anche dopo chiusura → reset a "total" su `onOpenChange(false)`.
+- **`expenses` reset periodo** (Home): oggi cancella anche scontrini importati con prodotti già in dispensa → aggiungere conferma con conteggio "stai per cancellare N spese".
+- **Budget UI**: mostra valori vuoti come "0,00" invece di nascondere la barra (UX sconcertante quando budget non impostato → CTA "Imposta budget").
+- **Bottom nav `startsWith`**: `/dispensa` matcha anche `/dispensa/aggiungi` (ok) ma su Statistiche con `/spesa` rischio collisione futura — usare match esatto su tab base.
 
-### P1 — Connessione con dispensa
-- **"Cucina ora"** su un entry del piano → decrementa quantità ingredienti dalla dispensa.
-- **Ricette suggerite da dispensa**: mostrare in homepage "puoi cucinare X cose con quello che hai" usando `ai-suggest-recipes` filtrato.
-- **Rigenera singolo slot** del piano (oggi sembra solo rigenerazione settimana intera).
-- **Drag & drop** per spostare ricette tra giorni/slot.
-
-### P2 — Qualità ricette
-- **Foto ricetta auto** via Gemini image (già abilitato sul gateway) quando manca `image_url`.
-- **Scaling porzioni**: cambia `servings` → ricalcola ingredienti e kcal.
-- **Lista spesa intelligente** dal piano: aggrega quantità, sottrae scorte dispensa, raggruppa per categoria/corsia supermercato.
-- **Preferiti & collezioni** (tag già supportati, manca UI).
-
-### P3 — Differenzianti
-- **Modalità "cosa cucino con questi 5 ingredienti?"** stile Frigo Magico.
-- **Voice mode** in cucina (mani sporche): leggi ricetta passo passo.
-
----
-
-## 4. Budget & Statistiche
-
-Stato attuale: solo budget mensile/settimanale + somma spese. Manca tutto il livello analitico.
-
-### P1 — Visibilità
-- **Pagina /statistiche** con:
-  - Grafico linee spesa giornaliera vs budget proiettato.
-  - Top 10 categorie del mese (pie chart).
-  - Confronto mese corrente vs precedente.
-  - Spesa per dispensa / per membro (`created_by`).
-- **Forecast**: "al ritmo attuale supererai il budget di X€" sulla home.
-- **Export CSV/PDF** report mensile (utile per chi divide spese di casa).
-
-### P2 — Insight AI
-- **Anomaly detection**: "questa settimana hai speso il 40% in più in snack".
-- **Suggerimenti risparmio**: "comprando il formato grande risparmi 12€/mese".
-- **Spreco alimentare**: traccia item scaduti non consumati → costo stimato sprecato.
-
-### P3
-- **Split spese tra membri** del nucleo con saldi tipo Splitwise.
-
----
-
-## 5. Trasversali (debiti tecnici e qualità)
-
-### P0
-- **Audit hooks order**: il bug "Rendered fewer hooks" appena risolto in `dispensa.tsx` può essere ovunque ci sia un `if (...) return` prima di `useState`. Passata sistematica su tutte le route.
-- **Error boundaries per route** con messaggio user-friendly + pulsante retry (oggi mostra stack trace).
-
-### P1
-- **Loading skeletons** uniformi (oggi mix di spinner e blank).
-- **Empty states** illustrati con CTA chiara su dispensa/piano/ricette/spesa vuoti.
-- **Offline-first** della dispensa: cache con TanStack Query + mutations ottimistiche (alcune già presenti, da estendere).
-- **PWA install prompt** + icona home screen (manifest già presente, mancare prompt + screenshots store).
-
-### P2
-- **Ruolo "viewer" e "co-genitore"** già nel db (`member_role`) ma non sfruttato in UI.
-- **Notifiche push** (tabelle già pronte, edge function da scrivere): scadenze, lista spesa pronta, piano settimanale generato.
-- **i18n**: oggi tutto hardcoded in italiano, predisporre per EN/ES.
-
----
-
-## Ordine consigliato di esecuzione (sprint)
+## File modificati / creati
 
 ```text
-Sprint 1 (1 settimana)  — P0 bugs + scan reliability
-  - Hook order audit globale
-  - Compressione immagine + fallback editor scontrino
-  - Kcal: campo kcal_basis + ricalcolo idempotente
-  - Error boundaries per route
-
-Sprint 2 — Workflow Spesa & Dispensa
-  - Anteprima/edit pre-import scontrino
-  - Match auto scontrino ↔ lista spesa
-  - Ricerca/filtri/bulk actions dispensa
-  - Storno parziale + rettifica con note
-
-Sprint 3 — Pagina Statistiche + Forecast budget
-  - Grafici (Recharts già nello stack), export CSV
-  - Anomaly insight AI
-
-Sprint 4 — Connessione Piano ↔ Dispensa ↔ Spesa
-  - "Cucina ora" decrementa scorte
-  - Lista spesa intelligente da piano
-  - Rigenera singolo slot, drag&drop
-
-Sprint 5 — Push notifications + offline + PWA install
+src/routes/_app/statistiche.tsx           (NEW)
+src/components/EmptyState.tsx             (NEW)
+src/components/ListSkeleton.tsx           (NEW)
+src/components/AppShell.tsx               (nav restyle + Statistiche tab)
+src/styles.css                            (token surface/success/warning/danger)
+src/routes/_app/home.tsx                  (rimuovi duplicati, fix loadQuick, fix reset)
+src/routes/_app/spesa.tsx                 (rimuovi budget block, fix closeTab reset)
+src/routes/_app/dispensa.tsx              (badge scadenza con nuovi token)
+src/routes/_app/impostazioni.preferenze.tsx (link a /statistiche per budget)
+src/lib/queries.ts                        (helper aggregazioni statistiche)
 ```
 
----
+## Note / decisione richiesta
 
-## Sezione tecnica (note implementative)
+**Bottom nav**: meglio (a) sostituire `Ricette` con `Statistiche` nella nav principale (Ricette resta accessibile da Home/Piano), oppure (b) tenere Ricette e mettere Statistiche solo come card nella Home? Procedo con **(a)** salvo diverso parere — è più coerente con un'app spese-prima.
 
-- **kcal_basis**: aggiungere enum `kcal_basis_type` (`per_100g`, `per_unit`, `per_ml`) su `food_items`; aggiornare `ai-parse-food` per restituirlo esplicitamente; helper TS `computeTotalKcal(item)` centralizzato.
-- **Statistiche**: query SQL aggregate via RPC `household_stats(household_id, from, to)` per evitare 1000-row limit di Supabase.
-- **Push**: edge function schedulata con `pg_cron` su endpoint `/api/public/notifications/dispatch` (signature HMAC), legge `notification_preferences`.
-- **Decremento dispensa da ricetta**: nuovo RPC `consume_recipe(meal_plan_entry_id)` transazionale che decrementa `food_items.quantity` per ogni `recipe_ingredients` con match nome.
-- **Storno parziale**: nuova tabella `expense_adjustments(expense_id, amount_delta, reason, created_by)` invece di mutare `expenses.amount`.
-- **Hook order**: lint rule `react-hooks/rules-of-hooks` già attiva — verificare che non ci siano `eslint-disable`.
+## Ordine di esecuzione
 
----
-
-Dimmi quale sprint vuoi che pianifichi nel dettaglio (con file, schema, funzioni edge) e procediamo.
+1. Token CSS + componenti riusabili (EmptyState, ListSkeleton)
+2. Pagina Statistiche con Recharts + export CSV
+3. AppShell restyle + nuova tab
+4. Cleanup Home + Spesa (sposta budget)
+5. Bug fix mirati
+6. QA visivo a 399x810 (viewport corrente)

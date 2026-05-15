@@ -22,6 +22,7 @@ import { Route as AdminUtentiRouteImport } from './routes/admin.utenti'
 import { Route as AdminLogsRouteImport } from './routes/admin.logs'
 import { Route as AdminLogEmailRouteImport } from './routes/admin.log-email'
 import { Route as AdminConsoleRouteImport } from './routes/admin.console'
+import { Route as AppStatisticheRouteImport } from './routes/_app/statistiche'
 import { Route as AppSpesaRouteImport } from './routes/_app/spesa'
 import { Route as AppRicetteRouteImport } from './routes/_app/ricette'
 import { Route as AppPianoRouteImport } from './routes/_app/piano'
@@ -105,6 +106,11 @@ const AdminConsoleRoute = AdminConsoleRouteImport.update({
   id: '/console',
   path: '/console',
   getParentRoute: () => AdminRoute,
+} as any)
+const AppStatisticheRoute = AppStatisticheRouteImport.update({
+  id: '/statistiche',
+  path: '/statistiche',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppSpesaRoute = AppSpesaRouteImport.update({
   id: '/spesa',
@@ -220,6 +226,7 @@ export interface FileRoutesByFullPath {
   '/piano': typeof AppPianoRoute
   '/ricette': typeof AppRicetteRouteWithChildren
   '/spesa': typeof AppSpesaRouteWithChildren
+  '/statistiche': typeof AppStatisticheRoute
   '/admin/console': typeof AdminConsoleRoute
   '/admin/log-email': typeof AdminLogEmailRoute
   '/admin/logs': typeof AdminLogsRoute
@@ -252,6 +259,7 @@ export interface FileRoutesByTo {
   '/piano': typeof AppPianoRoute
   '/ricette': typeof AppRicetteRouteWithChildren
   '/spesa': typeof AppSpesaRouteWithChildren
+  '/statistiche': typeof AppStatisticheRoute
   '/admin/console': typeof AdminConsoleRoute
   '/admin/log-email': typeof AdminLogEmailRoute
   '/admin/logs': typeof AdminLogsRoute
@@ -287,6 +295,7 @@ export interface FileRoutesById {
   '/_app/piano': typeof AppPianoRoute
   '/_app/ricette': typeof AppRicetteRouteWithChildren
   '/_app/spesa': typeof AppSpesaRouteWithChildren
+  '/_app/statistiche': typeof AppStatisticheRoute
   '/admin/console': typeof AdminConsoleRoute
   '/admin/log-email': typeof AdminLogEmailRoute
   '/admin/logs': typeof AdminLogsRoute
@@ -322,6 +331,7 @@ export interface FileRouteTypes {
     | '/piano'
     | '/ricette'
     | '/spesa'
+    | '/statistiche'
     | '/admin/console'
     | '/admin/log-email'
     | '/admin/logs'
@@ -354,6 +364,7 @@ export interface FileRouteTypes {
     | '/piano'
     | '/ricette'
     | '/spesa'
+    | '/statistiche'
     | '/admin/console'
     | '/admin/log-email'
     | '/admin/logs'
@@ -388,6 +399,7 @@ export interface FileRouteTypes {
     | '/_app/piano'
     | '/_app/ricette'
     | '/_app/spesa'
+    | '/_app/statistiche'
     | '/admin/console'
     | '/admin/log-email'
     | '/admin/logs'
@@ -516,6 +528,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/console'
       preLoaderRoute: typeof AdminConsoleRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/_app/statistiche': {
+      id: '/_app/statistiche'
+      path: '/statistiche'
+      fullPath: '/statistiche'
+      preLoaderRoute: typeof AppStatisticheRouteImport
+      parentRoute: typeof AppRoute
     }
     '/_app/spesa': {
       id: '/_app/spesa'
@@ -718,6 +737,7 @@ interface AppRouteChildren {
   AppPianoRoute: typeof AppPianoRoute
   AppRicetteRoute: typeof AppRicetteRouteWithChildren
   AppSpesaRoute: typeof AppSpesaRouteWithChildren
+  AppStatisticheRoute: typeof AppStatisticheRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -727,6 +747,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppPianoRoute: AppPianoRoute,
   AppRicetteRoute: AppRicetteRouteWithChildren,
   AppSpesaRoute: AppSpesaRouteWithChildren,
+  AppStatisticheRoute: AppStatisticheRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
@@ -766,13 +787,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
