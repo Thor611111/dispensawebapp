@@ -1,13 +1,12 @@
 import { createFileRoute, useSearch } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useHouseholdId, useShoppingList, useExpenses, usePreferences, useFoodItems, useRecommendedProducts, usePantries, useCurrentMealPlan, currentWeekStart } from "@/lib/queries";
+import { useHouseholdId, useShoppingList, useExpenses, usePreferences, useFoodItems, useRecommendedProducts, usePantries, useCurrentMealPlan } from "@/lib/queries";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Progress } from "@/components/ui/progress";
 import { Plus, ShoppingBag, Trash2, Sparkles, Loader2, Check, Camera, Receipt, CalendarDays, AlertTriangle, CheckCircle2, HelpCircle, PackagePlus, History, X } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -264,12 +263,7 @@ function Spesa() {
 
   const total = items.filter((i) => !i.checked).reduce((s, i) => s + Number(i.estimated_price ?? 0), 0);
   const checkedCount = items.filter((i) => i.checked).length;
-
-  const weekStart = currentWeekStart();
-  const weekSpent = expenses.filter((e) => e.spent_on >= weekStart).reduce((s, e) => s + Number(e.amount), 0);
-  const budget = prefs?.weekly_budget ? Number(prefs.weekly_budget) : 0;
-  const remaining = budget - weekSpent;
-  const pct = budget > 0 ? Math.min(100, (weekSpent / budget) * 100) : 0;
+  void expenses; // (statistiche centralizza budget/forecast)
 
   const generateRecs = async () => {
     if (!hid) return;
@@ -339,17 +333,6 @@ function Spesa() {
               {pantries.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
             </SelectContent>
           </Select>
-        </div>
-      )}
-
-      {budget > 0 && (
-        <div className="mb-4 rounded-2xl border bg-card p-4">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Settimana</span>
-            <span className={`font-semibold ${remaining < 0 ? "text-destructive" : "text-primary"}`}>{remaining.toFixed(2)} € rimanenti</span>
-          </div>
-          <Progress value={pct} className="mt-2" />
-          <p className="mt-1 text-xs text-muted-foreground">Speso {weekSpent.toFixed(2)} di {budget.toFixed(2)} €</p>
         </div>
       )}
 
