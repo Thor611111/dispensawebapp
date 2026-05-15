@@ -4,15 +4,11 @@ import { PageHeader } from "@/components/AppShell";
 import { useHouseholdId, useFoodItems, usePreferences, useExpenses, useProfile, useIsAdmin, currentWeekStart, daysUntil } from "@/lib/queries";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Loader2, Clock, Wallet, Package, ChefHat, ShoppingCart, AlertTriangle, Calendar, ShieldCheck, RotateCcw } from "lucide-react";
+import { Sparkles, Loader2, Clock, Wallet, Package, ChefHat, ShoppingCart, AlertTriangle, Calendar, ShieldCheck, BarChart3 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { InstallAppCard } from "@/components/InstallAppCard";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/_app/home")({ component: Home });
 
@@ -25,32 +21,19 @@ function Home() {
   const { data: expenses = [] } = useExpenses(hid);
   const { data: profile } = useProfile();
   const { data: isAdmin } = useIsAdmin();
-  const qc = useQueryClient();
+  useQueryClient();
   const [quick, setQuick] = useState<R[]>([]);
   const [loading, setLoading] = useState(false);
 
   const weekStart = currentWeekStart();
   const today = new Date();
-  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
   const weekSpent = expenses.filter((e) => e.spent_on >= weekStart).reduce((s, e) => s + Number(e.amount), 0);
-  const monthSpent = expenses.filter((e) => e.spent_on >= monthStart).reduce((s, e) => s + Number(e.amount), 0);
   const budget = prefs?.weekly_budget ? Number(prefs.weekly_budget) : 0;
   const remaining = budget - weekSpent;
   const pct = budget > 0 ? Math.min(100, (weekSpent / budget) * 100) : 0;
-  const mBudget = prefs?.monthly_budget ? Number(prefs.monthly_budget) : 0;
-  const mPct = mBudget > 0 ? Math.min(100, (monthSpent / mBudget) * 100) : 0;
   const expiring = items.filter((i) => { const d = daysUntil(i.expires_on); return d !== null && d <= 3; }).length;
 
   const monthLabel = today.toLocaleDateString("it-IT", { month: "long", year: "numeric" });
-
-  const resetPeriod = async (kind: "week" | "month") => {
-    if (!hid) return;
-    const since = kind === "week" ? weekStart : monthStart;
-    const { error } = await supabase.from("expenses").delete().eq("household_id", hid).gte("spent_on", since);
-    if (error) return toast.error(error.message);
-    await qc.invalidateQueries({ queryKey: ["expenses", hid] });
-    toast.success(kind === "week" ? "Saldo settimanale azzerato" : "Spese del mese azzerate");
-  };
 
   const loadQuick = async (force = false) => {
     if (!items.length) return;
@@ -58,6 +41,8 @@ function Home() {
     if (!force) {
       const cached = localStorage.getItem(cacheKey);
       if (cached) { setQuick(JSON.parse(cached)); return; }
+      // already loaded today in memory? skip extra fetch
+      if (quick.length) return;
     }
     setLoading(true);
     const { data, error } = await supabase.functions.invoke("ai-suggest-recipes", { body: { foodItems: items, preferences: prefs, count: 2 } });
@@ -68,7 +53,8 @@ function Home() {
     localStorage.setItem(cacheKey, JSON.stringify(r));
   };
 
-  useEffect(() => { if (hid && items.length) loadQuick(); /* eslint-disable-next-line */ }, [hid, items.length]);
+  // Carica una sola volta al primo avere hid+items: la cache giornaliera evita chiamate ripetute.
+  useEffect(() => { if (hid && items.length && !quick.length) loadQuick(); /* eslint-disable-next-line */ }, [hid, items.length > 0]);
 
   const firstName = (profile?.display_name ?? "").trim().split(/\s+/)[0];
   const greeting = firstName ? `Ciao, ${firstName} 👋` : "Ciao 👋";
