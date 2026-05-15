@@ -65,73 +65,35 @@ function Home() {
 
       <InstallAppCard variant="banner" dismissible />
 
-      <div className="mb-4 rounded-2xl border bg-card p-5">
+      <Link to="/statistiche" className="mb-4 block rounded-2xl border bg-card p-5 transition-colors hover:bg-secondary/40">
         <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-xs uppercase text-muted-foreground">Budget settimanale</p>
-            <p className={`mt-1 text-3xl font-bold ${remaining < 0 ? "text-destructive" : ""}`}>{budget > 0 ? `${remaining.toFixed(2)} €` : "—"}</p>
-            <p className="text-xs text-muted-foreground">{budget > 0 ? `Speso ${weekSpent.toFixed(2)} di ${budget.toFixed(2)} €` : "Imposta un budget dal Profilo"}</p>
+          <div className="min-w-0">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">Budget settimanale</p>
+            <p className={`mt-1 text-3xl font-bold ${budget > 0 && remaining < 0 ? "text-danger" : ""}`}>
+              {budget > 0 ? `${remaining.toFixed(2)} €` : "—"}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {budget > 0 ? `Speso ${weekSpent.toFixed(2)} di ${budget.toFixed(2)} €` : "Tocca per impostare un budget"}
+            </p>
           </div>
-          <div className="flex flex-col items-end gap-2">
-            <Wallet className="h-10 w-10 text-primary" />
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button size="sm" variant="ghost" className="h-7 px-2 text-xs"><RotateCcw className="h-3 w-3" /> Azzera</Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Azzerare il saldo settimanale?</AlertDialogTitle>
-                  <AlertDialogDescription>Verranno eliminate tutte le spese dal {weekStart}. Azione irreversibile.</AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Annulla</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => resetPeriod("week")}>Azzera</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
+          <Wallet className="h-10 w-10 text-primary" />
         </div>
         {budget > 0 && <Progress value={pct} className="mt-3" />}
-      </div>
+      </Link>
 
       <div className="mb-4 grid grid-cols-2 gap-3">
-        <div className="rounded-xl border bg-card p-4">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <p className="text-xs text-muted-foreground">Spesa del mese</p>
-              <p className="mt-1 text-2xl font-bold">{monthSpent.toFixed(2)} €</p>
-            </div>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button size="icon" variant="ghost" className="h-7 w-7" title="Azzera mese"><RotateCcw className="h-3 w-3" /></Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Azzerare le spese del mese?</AlertDialogTitle>
-                  <AlertDialogDescription>Verranno eliminate tutte le spese dal {monthStart}. Azione irreversibile.</AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Annulla</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => resetPeriod("month")}>Azzera</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
-          {mBudget > 0 && (
-            <>
-              <Progress value={mPct} className="mt-2" />
-              <p className="mt-1 text-[10px] text-muted-foreground">di {mBudget.toFixed(0)} €</p>
-            </>
-          )}
-        </div>
-        <div className="rounded-xl border bg-card p-4">
+        <Link to="/statistiche" className="rounded-xl border bg-card p-4 transition-colors hover:bg-secondary/40">
+          <p className="text-xs text-muted-foreground">Speso questa settimana</p>
+          <p className="mt-1 text-2xl font-bold">{weekSpent.toFixed(2)} €</p>
+        </Link>
+        <Link to="/dispensa" search={{ filter: "expiring" }} className="rounded-xl border bg-card p-4 transition-colors hover:bg-secondary/40">
           <p className="text-xs text-muted-foreground">In scadenza ≤3g</p>
-          <p className={`mt-1 text-2xl font-bold ${expiring > 0 ? "text-destructive" : ""}`}>{expiring}</p>
-        </div>
+          <p className={`mt-1 text-2xl font-bold ${expiring > 0 ? "text-danger" : ""}`}>{expiring}</p>
+        </Link>
       </div>
 
       {expiring > 0 && (
-        <Link to="/dispensa" className="mb-4 flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+        <Link to="/dispensa" search={{ filter: "expiring" }} className="mb-4 flex items-center gap-2 rounded-xl border border-danger/30 bg-danger/5 p-3 text-sm text-danger">
           <AlertTriangle className="h-4 w-4" /> Hai {expiring} alimenti che scadono presto
         </Link>
       )}
@@ -141,7 +103,7 @@ function Home() {
         <Link to="/ricette" className="flex flex-col items-center gap-1 rounded-xl border bg-card p-3 text-xs"><ChefHat className="h-5 w-5 text-primary" /> Ricette</Link>
         <Link to="/piano" className="flex flex-col items-center gap-1 rounded-xl border bg-card p-3 text-xs"><Calendar className="h-5 w-5 text-primary" /> Piano</Link>
         <Link to="/spesa" className="flex flex-col items-center gap-1 rounded-xl border bg-card p-3 text-xs"><ShoppingCart className="h-5 w-5 text-primary" /> Spesa</Link>
-        <Link to="/impostazioni" className="flex flex-col items-center gap-1 rounded-xl border bg-card p-3 text-[10px]"><Wallet className="h-5 w-5 text-primary" /> Budget</Link>
+        <Link to="/statistiche" className="flex flex-col items-center gap-1 rounded-xl border bg-card p-3 text-[10px]"><BarChart3 className="h-5 w-5 text-primary" /> Stats</Link>
       </div>
 
       <div className="mb-2 flex items-center justify-between">
