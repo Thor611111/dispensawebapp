@@ -24,7 +24,6 @@ import { Route as AdminLogEmailRouteImport } from './routes/admin.log-email'
 import { Route as AdminConsoleRouteImport } from './routes/admin.console'
 import { Route as AppStatisticheRouteImport } from './routes/_app/statistiche'
 import { Route as AppSpesaRouteImport } from './routes/_app/spesa'
-import { Route as AppStatisticheRouteImport } from './routes/_app/statistiche'
 import { Route as AppRicetteRouteImport } from './routes/_app/ricette'
 import { Route as AppPianoRouteImport } from './routes/_app/piano'
 import { Route as AppImpostazioniRouteImport } from './routes/_app/impostazioni'
@@ -116,11 +115,6 @@ const AppStatisticheRoute = AppStatisticheRouteImport.update({
 const AppSpesaRoute = AppSpesaRouteImport.update({
   id: '/spesa',
   path: '/spesa',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppStatisticheRoute = AppStatisticheRouteImport.update({
-  id: '/statistiche',
-  path: '/statistiche',
   getParentRoute: () => AppRoute,
 } as any)
 const AppRicetteRoute = AppRicetteRouteImport.update({
