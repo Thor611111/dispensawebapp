@@ -28,11 +28,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 className={cn(
                   "flex flex-1 flex-col items-center gap-0.5 rounded-xl px-1 py-2 text-[10px] font-medium transition-all duration-200",
                   active
-                    ? "bg-primary/10 text-primary"
+                    ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
                 )}
               >
-                <Icon className={cn("h-5 w-5 transition-transform", active && "scale-110")} />
+                <Icon className="h-5 w-5" />
                 <span>{t.label}</span>
               </Link>
             );
@@ -45,10 +45,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
 export function PageHeader({ title, subtitle, right }: { title: string; subtitle?: string; right?: React.ReactNode }) {
   return (
-    <div className="mb-6 flex items-end justify-between gap-4 border-b border-border/40 pb-4">
+    <div className="mb-5 flex items-end justify-between gap-3 border-b border-border/40 pb-3">
       <div>
-        <h1 className="text-[1.6rem] font-bold leading-tight tracking-tight">{title}</h1>
-        {subtitle ? <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p> : null}
+        <h1 className="text-2xl font-bold leading-tight tracking-tight">{title}</h1>
+        {subtitle ? <p className="mt-1 text-[13px] text-muted-foreground">{subtitle}</p> : null}
       </div>
       {right}
     </div>
