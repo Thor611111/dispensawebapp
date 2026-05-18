@@ -19,7 +19,12 @@ import { toast } from "sonner";
 import { QuantityStepper } from "@/components/QuantityStepper";
 import { compressImage } from "@/lib/image-compress";
 
-export const Route = createFileRoute("/_app/spesa")({ component: Spesa });
+export const Route = createFileRoute("/_app/spesa")({
+  component: Spesa,
+  validateSearch: (s: Record<string, unknown>) => ({
+    scan: typeof s.scan === "number" || typeof s.scan === "string" ? s.scan : undefined,
+  }),
+});
 
 function Spesa() {
   const { data: hid } = useHouseholdId();
