@@ -57,7 +57,6 @@ function Dispensa() {
   let filtered = filter === "all" ? byPantry : byPantry.filter((i) => i.location === filter);
   if (expiringOnly) filtered = filtered.filter((i) => { const d = daysUntil(i.expires_on); return d !== null && d <= warnDays; })
     .sort((a, b) => (daysUntil(a.expires_on) ?? 0) - (daysUntil(b.expires_on) ?? 0));
-  const totalKcal = filtered.reduce((s, i) => s + (Number(i.kcal_per_unit ?? 0) * Number(i.quantity ?? 0)), 0);
 
   const remove = async (id: string) => {
     const { error } = await supabase.from("food_items").delete().eq("id", id);
