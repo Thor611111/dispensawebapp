@@ -1,90 +1,64 @@
+# Revisione pagine e interfaccia
 
-# Sprint 3 — Statistiche, riorganizzazione, restyling, fix
+Obiettivo: ogni pagina ha un ruolo chiaro, niente doppioni, gerarchia visiva più calma e leggibile su mobile.
 
-## 1. Riorganizzazione sezioni (cosa va dove)
+## Audit per pagina (cosa tengo / cosa tolgo)
 
-Oggi `Spesa` mescola troppe cose (scontrino + budget + lista) e la `Home` duplica metriche. Nuovo modello:
+### Home — dashboard veloce
+- TIENE: saluto, widget budget (link a Stats), tile "In scadenza ≤3g", alert scadenze, ricette rapide AI, scorciatoia admin.
+- TOGLIE: tile duplicato "Speso questa settimana" (è già nel widget budget) e griglia 5-icone (Dispensa/Ricette/Piano/Spesa/Stats) che duplica la bottom nav.
+- AGGIUNGE: una sola riga "Azioni rapide" con 2 CTA contestuali — "Aggiungi alimento" e "Scansiona scontrino".
 
-| Tab | Ruolo | Contenuti |
-|---|---|---|
-| **Home** | dashboard giornaliera | saluto, scadenze imminenti, ricette rapide da dispensa, CTA piano di oggi, install card |
-| **Dispensa** | inventario | lista food_items + filtri/ricerca/badge scadenza (P1 sprint 2 base, qui solo polish) |
-| **Ricette** | catalogo | nessuna modifica strutturale |
-| **Piano** | settimana | nessuna modifica strutturale |
-| **Spesa** | flusso d'acquisto | lista spesa + scan scontrino + chiusura/storno (rimuove riassunto budget, va in Statistiche) |
-| **Statistiche** *(NUOVA)* | analisi & budget | budget settimanale/mensile, grafici, forecast, top categorie, export |
-| **Impostazioni** | invariata | |
+### Dispensa — inventario
+- TIENE: filtro Tutto/In scadenza, switch dispense, filtro location, lista con stepper qty, badge scadenza, storno, elimina, svuota.
+- TOGLIE: bottone "Ricalcola kcal" per riga (raro, sposta in detail / menu). Rimuove subtitle con kcal totali (rumore numerico).
+- MIGLIORA: action per riga in un menu "⋯" invece di 3 icone affiancate → riga più pulita; sticky filter bar.
 
-Spostamenti chiave:
-- **Home** perde i due budget bar duplicati (settimana+mese) → resta solo un mini-widget "Budget settimanale" con link a Statistiche.
-- **Spesa** perde il blocco budget settimanale in cima (oggi righe 270-352) → resta solo "totale ultimo scontrino" e CTA chiusura.
-- **Statistiche** centralizza budget editing (oggi sparso tra Home/Spesa/Impostazioni preferenze) e analisi.
+### Spesa — acquisto
+- TIENE: lista articoli, aggiungi rapido, scansione scontrino, chiusura con totale, "Dal piano", storico.
+- TOGLIE: card "Consigliati per te" (AI products) — duplica funzionalità di Piano/Dispensa, raramente azionata; spostata sotto un toggle/accordion "Suggerimenti AI".
+- TOGLIE: select dispensa di destinazione sempre visibile → solo quando ci sono >1 dispense, compatto.
 
-Bottom nav resta a 6 voci ma sostituiamo l'ordine: Home · Dispensa · Piano · Spesa · Statistiche · Impostazioni (Ricette si raggiunge da Home/Piano, era poco usato come tab principale — alternativa: lasciamo Ricette e mettiamo Statistiche dentro Home come card link. Vedi nota in fondo.)
+### Piano — calendario pasti
+- TIENE: vista mese, generazione giorno/settimana/mese, drawer giorno, sposta/sostituisci ricetta, genera spesa da piano.
+- TOGLIE: niente, ma compatta header (un solo blocco generazione invece di pulsanti sparsi).
 
-## 2. Pagina /statistiche (nuova)
+### Ricette — libreria
+- TIENE: lista salvate, importa/nuova, dettaglio.
+- VALUTA: rimozione tab/filtri poco usati (verifico in implementazione).
 
-File: `src/routes/_app/statistiche.tsx`. Stack: Recharts (già nel progetto via `src/components/ui/chart.tsx`).
+### Statistiche — analisi
+- TIENE: KPI, area chart cumulato, top categorie, per dispensa/membro, export CSV, editor budget inline, forecast.
+- MIGLIORA: ordine sezioni (KPI → trend → categorie → forecast → export), tipografia più calma.
 
-Sezioni:
-1. **Periodo selector** — Settimana / Mese / 3 mesi (tabs)
-2. **KPI cards** — Speso, Budget, Δ vs periodo precedente, Forecast fine periodo
-3. **Linea spesa cumulativa vs budget proiettato** — AreaChart con linea budget tratteggiata
-4. **Top categorie** — BarChart orizzontale (deriva categoria da `food_items` matchati o da `expenses.note` parsed)
-5. **Spesa per membro** — pie chart su `expenses.created_by` con join `profiles`
-6. **Spesa per dispensa** — bar chart su `food_items.pantry_id`
-7. **Insight forecast** — testo: "al ritmo attuale chiuderai il mese a X€ (±Y vs budget)"
-8. **Export CSV** — download `expenses_YYYY-MM.csv` lato client
-9. **Editor budget** — input weekly/monthly inline (sostituisce edit in altre pagine)
+### Impostazioni — invariata (già a livelli)
 
-Tutto client-side: query esistenti `useExpenses` + nuove derivazioni con `useMemo`. Niente nuove edge function in questo sprint (anomaly AI rimandato a sprint successivo).
+## Restyling globale (confortevole)
 
-## 3. Restyling UI (più confortevole)
+1. **Densità**: `PageHeader` con padding ridotto su mobile; card `p-4` invece di `p-5/6` dove ridondante.
+2. **Tipografia**: H1 `text-2xl` (era 1.6rem), subtitle `text-[13px]`, niente uppercase tracking sparso.
+3. **Spaziature**: gap verticale uniforme `space-y-3` tra blocchi pagina.
+4. **Bottom nav**: pill attiva con `bg-primary text-primary-foreground` (più leggibile del `bg-primary/10`), label sempre visibili.
+5. **PageHeader sticky** opzionale su pagine lunghe (Dispensa, Piano).
+6. **Colori semantici**: usare `--color-danger/warning/success` già definiti, sostituire `text-amber-500` hardcoded in Dispensa.
 
-Cambi trasversali, no nuove dipendenze:
-- **PageHeader**: aggiungere variante con sticky background + ombra leggera allo scroll, padding più ariato (oggi `mb-6`, passa a `mb-8` con divider sottile).
-- **Card density**: passare da `p-6` a `p-5` su mobile per ridurre scroll, gap interni `gap-3`.
-- **Bottom nav**: aggiungere pill attiva (background `primary/10` rounded) invece del solo cambio colore — più leggibile su mobile.
-- **Empty states uniformi**: nuovo componente `<EmptyState icon title description action />` riusato in dispensa/piano/spesa/statistiche vuote.
-- **Skeleton uniformi**: nuovo `<ListSkeleton rows={n} />` riusato al posto degli spinner sparsi.
-- **Token colore semantici**: aggiungere in `styles.css` `--surface-elevated`, `--success`, `--warning`, `--danger` per badge scadenza coerenti (oggi mix verde/giallo/rosso hard-coded).
-- **Type scale**: H1 `text-2xl`→ `text-[1.6rem]` con tracking ridotto, body `text-[0.95rem]`.
-- **Transizioni soft** (`transition-colors duration-200`) su tab attivo, card hover.
+## Bug fix mirati
+- Dispensa: tab "In scadenza" usa `warnDays` ma contatore home usa `3` fisso → allineo entrambi a `prefs.expiry_warning_days`.
+- Spesa: `void expenses` rimosso, riordino import non usati (`Receipt`, `CheckCircle2`, `HelpCircle`, `PackagePlus`, `AlertTriangle` se non più referenziati dopo edit).
+- Home: tile "speso settimana" rimosso elimina anche `weekSpent` se non più usato.
 
-## 4. Bug fix
+## File da toccare
+- `src/components/AppShell.tsx` (nav + header)
+- `src/routes/_app/home.tsx`
+- `src/routes/_app/dispensa.tsx`
+- `src/routes/_app/spesa.tsx`
+- `src/routes/_app/piano.tsx` (solo header compatto)
+- `src/routes/_app/statistiche.tsx` (riordino)
+- `src/styles.css` (eventuale token spacing)
 
-Audit mirato durante l'implementazione:
-- **Hook order** su `home.tsx`, `piano.tsx`, `ricette.tsx` (controllo già fatto su `dispensa.tsx`): assicurare che ogni `if (!hid) return` stia DOPO tutti gli `useState/useQuery/useMemo`.
-- **Home `loadQuick`**: oggi cache key cambia ogni giorno e re-trigger ad ogni cambio `items.length` → throttle a 1 chiamata/giorno e niente refetch automatico se cache hit.
-- **Spesa scan dialog**: `closeTab` rimane su "scan" anche dopo chiusura → reset a "total" su `onOpenChange(false)`.
-- **`expenses` reset periodo** (Home): oggi cancella anche scontrini importati con prodotti già in dispensa → aggiungere conferma con conteggio "stai per cancellare N spese".
-- **Budget UI**: mostra valori vuoti come "0,00" invece di nascondere la barra (UX sconcertante quando budget non impostato → CTA "Imposta budget").
-- **Bottom nav `startsWith`**: `/dispensa` matcha anche `/dispensa/aggiungi` (ok) ma su Statistiche con `/spesa` rischio collisione futura — usare match esatto su tab base.
+## Fuori scope
+- Nuove feature business (notifiche push, condivisione liste, OCR alternativo).
+- Modifiche schema DB.
+- Refactor edge function.
 
-## File modificati / creati
-
-```text
-src/routes/_app/statistiche.tsx           (NEW)
-src/components/EmptyState.tsx             (NEW)
-src/components/ListSkeleton.tsx           (NEW)
-src/components/AppShell.tsx               (nav restyle + Statistiche tab)
-src/styles.css                            (token surface/success/warning/danger)
-src/routes/_app/home.tsx                  (rimuovi duplicati, fix loadQuick, fix reset)
-src/routes/_app/spesa.tsx                 (rimuovi budget block, fix closeTab reset)
-src/routes/_app/dispensa.tsx              (badge scadenza con nuovi token)
-src/routes/_app/impostazioni.preferenze.tsx (link a /statistiche per budget)
-src/lib/queries.ts                        (helper aggregazioni statistiche)
-```
-
-## Note / decisione richiesta
-
-**Bottom nav**: meglio (a) sostituire `Ricette` con `Statistiche` nella nav principale (Ricette resta accessibile da Home/Piano), oppure (b) tenere Ricette e mettere Statistiche solo come card nella Home? Procedo con **(a)** salvo diverso parere — è più coerente con un'app spese-prima.
-
-## Ordine di esecuzione
-
-1. Token CSS + componenti riusabili (EmptyState, ListSkeleton)
-2. Pagina Statistiche con Recharts + export CSV
-3. AppShell restyle + nuova tab
-4. Cleanup Home + Spesa (sposta budget)
-5. Bug fix mirati
-6. QA visivo a 399x810 (viewport corrente)
+Confermi e procedo? Se vuoi modificare scope (es. tenere "Consigliati per te" in Spesa, o non toccare Piano), dimmelo prima di partire.

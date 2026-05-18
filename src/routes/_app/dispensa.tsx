@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Trash2, Refrigerator, Snowflake, Package2, Box, Trash, AlertTriangle, RotateCcw, Flame, Loader2 } from "lucide-react";
+import { Plus, Trash2, Refrigerator, Snowflake, Package2, Box, Trash, AlertTriangle, RotateCcw, Flame, Loader2, MoreVertical } from "lucide-react";
 import { toast } from "sonner";
 import { QuantityStepper } from "@/components/QuantityStepper";
 import {
@@ -15,6 +15,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 export const Route = createFileRoute("/_app/dispensa")({
   component: Dispensa,
@@ -56,7 +57,6 @@ function Dispensa() {
   let filtered = filter === "all" ? byPantry : byPantry.filter((i) => i.location === filter);
   if (expiringOnly) filtered = filtered.filter((i) => { const d = daysUntil(i.expires_on); return d !== null && d <= warnDays; })
     .sort((a, b) => (daysUntil(a.expires_on) ?? 0) - (daysUntil(b.expires_on) ?? 0));
-  const totalKcal = filtered.reduce((s, i) => s + (Number(i.kcal_per_unit ?? 0) * Number(i.quantity ?? 0)), 0);
 
   const remove = async (id: string) => {
     const { error } = await supabase.from("food_items").delete().eq("id", id);
@@ -124,7 +124,7 @@ function Dispensa() {
     <div>
       <PageHeader
         title="Dispensa"
-        subtitle={totalKcal > 0 ? `${filtered.length} alimenti · ~${Math.round(totalKcal)} kcal totali` : "Cosa hai in casa, sempre aggiornato."}
+        subtitle={filtered.length > 0 ? `${filtered.length} ${filtered.length === 1 ? "alimento" : "alimenti"}` : "Cosa hai in casa, sempre aggiornato."}
         right={
           <Button asChild size="sm">
             <Link to="/dispensa/aggiungi"><Plus className="h-4 w-4" /> Aggiungi</Link>
@@ -204,17 +204,24 @@ function Dispensa() {
                     <QuantityStepper value={Number(it.quantity ?? 0)} unit={it.unit} onChange={(n) => updateQty(it.id, n)} />
                   </div>
                 </div>
-                <div className="flex flex-col gap-1">
-                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => recalcKcal(it)} disabled={recalcId === it.id} title="Ricalcola kcal">
-                    {recalcId === it.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Flame className="h-3.5 w-3.5 text-amber-500" />}
-                  </Button>
-                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setStornoItem(it)} title="Storna acquisto">
-                    <RotateCcw className="h-3.5 w-3.5 text-muted-foreground" />
-                  </Button>
-                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => remove(it.id)} title="Elimina">
-                    <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
-                  </Button>
-                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="icon" variant="ghost" className="h-8 w-8" title="Azioni">
+                      {recalcId === it.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreVertical className="h-4 w-4 text-muted-foreground" />}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => setStornoItem(it)}>
+                      <RotateCcw className="h-4 w-4" /> Storna acquisto
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => recalcKcal(it)} disabled={recalcId === it.id}>
+                      <Flame className="h-4 w-4 text-warning" /> Ricalcola kcal
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => remove(it.id)} className="text-danger focus:text-danger">
+                      <Trash2 className="h-4 w-4" /> Elimina
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </li>
             );
           })}
