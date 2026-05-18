@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/AppShell";
 import { useHouseholdId, useFoodItems, usePreferences, useExpenses, useProfile, useIsAdmin, currentWeekStart, daysUntil } from "@/lib/queries";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Loader2, Clock, Wallet, Package, ChefHat, ShoppingCart, AlertTriangle, Calendar, ShieldCheck, BarChart3 } from "lucide-react";
+import { Sparkles, Loader2, Clock, Wallet, AlertTriangle, ShieldCheck, Plus, Camera } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { InstallAppCard } from "@/components/InstallAppCard";
@@ -31,7 +31,8 @@ function Home() {
   const budget = prefs?.weekly_budget ? Number(prefs.weekly_budget) : 0;
   const remaining = budget - weekSpent;
   const pct = budget > 0 ? Math.min(100, (weekSpent / budget) * 100) : 0;
-  const expiring = items.filter((i) => { const d = daysUntil(i.expires_on); return d !== null && d <= 3; }).length;
+  const warnDays = (prefs as any)?.expiry_warning_days ?? 3;
+  const expiring = items.filter((i) => { const d = daysUntil(i.expires_on); return d !== null && d <= warnDays; }).length;
 
   const monthLabel = today.toLocaleDateString("it-IT", { month: "long", year: "numeric" });
 
@@ -81,29 +82,23 @@ function Home() {
         {budget > 0 && <Progress value={pct} className="mt-3" />}
       </Link>
 
-      <div className="mb-4 grid grid-cols-2 gap-3">
-        <Link to="/statistiche" className="rounded-xl border bg-card p-4 transition-colors hover:bg-secondary/40">
-          <p className="text-xs text-muted-foreground">Speso questa settimana</p>
-          <p className="mt-1 text-2xl font-bold">{weekSpent.toFixed(2)} €</p>
-        </Link>
-        <Link to="/dispensa" search={{ filter: "expiring" }} className="rounded-xl border bg-card p-4 transition-colors hover:bg-secondary/40">
-          <p className="text-xs text-muted-foreground">In scadenza ≤3g</p>
-          <p className={`mt-1 text-2xl font-bold ${expiring > 0 ? "text-danger" : ""}`}>{expiring}</p>
-        </Link>
-      </div>
+      <Link to="/dispensa" search={{ filter: "expiring" }} className="mb-4 block rounded-2xl border bg-card p-4 transition-colors hover:bg-secondary/40">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs text-muted-foreground">In scadenza ≤{warnDays}g</p>
+            <p className={`mt-1 text-2xl font-bold ${expiring > 0 ? "text-danger" : ""}`}>{expiring}</p>
+          </div>
+          <AlertTriangle className={`h-8 w-8 ${expiring > 0 ? "text-danger" : "text-muted-foreground/40"}`} />
+        </div>
+      </Link>
 
-      {expiring > 0 && (
-        <Link to="/dispensa" search={{ filter: "expiring" }} className="mb-4 flex items-center gap-2 rounded-xl border border-danger/30 bg-danger/5 p-3 text-sm text-danger">
-          <AlertTriangle className="h-4 w-4" /> Hai {expiring} alimenti che scadono presto
-        </Link>
-      )}
-
-      <div className="mb-4 grid grid-cols-5 gap-2">
-        <Link to="/dispensa" className="flex flex-col items-center gap-1 rounded-xl border bg-card p-3 text-xs"><Package className="h-5 w-5 text-primary" /> Dispensa</Link>
-        <Link to="/ricette" className="flex flex-col items-center gap-1 rounded-xl border bg-card p-3 text-xs"><ChefHat className="h-5 w-5 text-primary" /> Ricette</Link>
-        <Link to="/piano" className="flex flex-col items-center gap-1 rounded-xl border bg-card p-3 text-xs"><Calendar className="h-5 w-5 text-primary" /> Piano</Link>
-        <Link to="/spesa" className="flex flex-col items-center gap-1 rounded-xl border bg-card p-3 text-xs"><ShoppingCart className="h-5 w-5 text-primary" /> Spesa</Link>
-        <Link to="/statistiche" className="flex flex-col items-center gap-1 rounded-xl border bg-card p-3 text-[10px]"><BarChart3 className="h-5 w-5 text-primary" /> Stats</Link>
+      <div className="mb-5 grid grid-cols-2 gap-2">
+        <Button asChild variant="outline" className="h-auto justify-start gap-2 py-3">
+          <Link to="/dispensa/aggiungi"><Plus className="h-4 w-4" /> Aggiungi alimento</Link>
+        </Button>
+        <Button asChild variant="outline" className="h-auto justify-start gap-2 py-3">
+          <Link to="/spesa" search={{ scan: 1 }}><Camera className="h-4 w-4" /> Scansiona scontrino</Link>
+        </Button>
       </div>
 
       <div className="mb-2 flex items-center justify-between">
