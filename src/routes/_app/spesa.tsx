@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, ShoppingBag, Trash2, Sparkles, Loader2, Check, Camera, Receipt, CalendarDays, AlertTriangle, CheckCircle2, HelpCircle, PackagePlus, History, X } from "lucide-react";
+import { Plus, ShoppingBag, Trash2, Sparkles, Loader2, Check, Camera, Receipt, CalendarDays, AlertTriangle, CheckCircle2, HelpCircle, PackagePlus, History, X, ChevronDown } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -18,6 +18,7 @@ import { reconcileReceipt, type ReceiptRow } from "@/lib/receipt-match";
 import { toast } from "sonner";
 import { QuantityStepper } from "@/components/QuantityStepper";
 import { compressImage } from "@/lib/image-compress";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 export const Route = createFileRoute("/_app/spesa")({
   component: Spesa,
@@ -52,6 +53,7 @@ function Spesa() {
   const [closing, setClosing] = useState(false);
   const search = useSearch({ strict: false }) as { scan?: number | string };
   const [closeTab, setCloseTab] = useState<string>("total");
+  const [showRecs, setShowRecs] = useState(false);
 
   useEffect(() => {
     if (search?.scan) {
@@ -329,7 +331,7 @@ function Spesa() {
         </Button>
       </div>
 
-      {pantries.length > 0 && (
+      {pantries.length > 1 && (
         <div className="mb-4 rounded-2xl border bg-card p-3">
           <Label className="text-xs text-muted-foreground">Dispensa di destinazione</Label>
           <Select value={pantryId || pantries[0]?.id} onValueChange={setPantryId}>
@@ -341,34 +343,44 @@ function Spesa() {
         </div>
       )}
 
-      <div className="mb-4 rounded-2xl border bg-card p-4">
-        <div className="mb-2 flex items-center justify-between">
-          <h3 className="text-sm font-semibold">Consigliati per te</h3>
-          <div className="flex gap-1">
-            <Button size="sm" variant="ghost" onClick={generateFromPlan} disabled={planGenLoading} title="Genera dal piano pasti settimanale">
-              {planGenLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <CalendarDays className="h-3 w-3" />} Dal piano
+      <div className="mb-3 flex gap-2">
+        <Button variant="outline" size="sm" className="flex-1" onClick={generateFromPlan} disabled={planGenLoading}>
+          {planGenLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CalendarDays className="h-3.5 w-3.5" />} Dal piano
+        </Button>
+        <Collapsible open={showRecs} onOpenChange={setShowRecs} className="flex-1">
+          <CollapsibleTrigger asChild>
+            <Button variant="outline" size="sm" className="w-full">
+              <Sparkles className="h-3.5 w-3.5" /> Suggerimenti AI
+              <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showRecs ? "rotate-180" : ""}`} />
             </Button>
+          </CollapsibleTrigger>
+        </Collapsible>
+      </div>
+      {showRecs && (
+        <div className="mb-4 rounded-2xl border bg-card p-3">
+          <div className="mb-2 flex items-center justify-between">
+            <h3 className="text-xs font-semibold text-muted-foreground">Consigliati per te</h3>
             <Button size="sm" variant="ghost" onClick={generateRecs} disabled={genLoading}>
               {genLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />} {recs.length ? "Aggiorna" : "Genera"}
             </Button>
           </div>
+          {recs.length === 0 ? (
+            <p className="text-xs text-muted-foreground">Tocca "Genera" per ricevere suggerimenti dall'AI in base a dispensa e abitudini.</p>
+          ) : (
+            <ul className="space-y-1.5">
+              {recs.map((r) => (
+                <li key={r.id} className="flex items-center gap-2 rounded-lg bg-secondary/40 p-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="truncate text-sm font-medium">{r.name}</p>
+                    {r.reason && <p className="truncate text-xs text-muted-foreground">{r.reason}</p>}
+                  </div>
+                  <Button size="icon" variant="ghost" onClick={() => addRecToList(r)}><Plus className="h-4 w-4" /></Button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
-        {recs.length === 0 ? (
-          <p className="text-xs text-muted-foreground">Tocca "Genera" per ricevere suggerimenti dall'AI.</p>
-        ) : (
-          <ul className="space-y-1.5">
-            {recs.map((r) => (
-              <li key={r.id} className="flex items-center gap-2 rounded-lg bg-secondary/40 p-2">
-                <div className="flex-1 min-w-0">
-                  <p className="truncate text-sm font-medium">{r.name}</p>
-                  {r.reason && <p className="truncate text-xs text-muted-foreground">{r.reason}</p>}
-                </div>
-                <Button size="icon" variant="ghost" onClick={() => addRecToList(r)}><Plus className="h-4 w-4" /></Button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+      )}
 
       <form onSubmit={add} className="mb-4 flex gap-2">
         <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Aggiungi articolo…" />
