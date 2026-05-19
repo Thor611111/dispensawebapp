@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/PasswordInput";
-import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/login")({
@@ -18,7 +17,6 @@ function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [remember, setRemember] = useState(true);
   const [showReset, setShowReset] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [resetLoading, setResetLoading] = useState(false);
@@ -26,16 +24,6 @@ function LoginPage() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    try {
-      // Configura persistenza in base a "Ricordami"
-      if (!remember) {
-        // Sessione non persistente: usa sessionStorage
-        try {
-          const keys = Object.keys(localStorage).filter((k) => k.startsWith("sb-"));
-          keys.forEach((k) => localStorage.removeItem(k));
-        } catch {}
-      }
-    } catch {}
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (error) {
@@ -111,12 +99,9 @@ function LoginPage() {
             <Label htmlFor="password">Password</Label>
             <PasswordInput id="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
           </div>
-          <div className="flex items-center justify-between">
-            <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
-              <Checkbox checked={remember} onCheckedChange={(v) => setRemember(Boolean(v))} />
-              Ricordami
-            </label>
-            <button type="button" onClick={() => { setResetEmail(email); setShowReset(true); }} className="text-sm text-primary underline">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Resterai connesso su questo dispositivo</span>
+            <button type="button" onClick={() => { setResetEmail(email); setShowReset(true); }} className="text-primary underline">
               Password dimenticata?
             </button>
           </div>
