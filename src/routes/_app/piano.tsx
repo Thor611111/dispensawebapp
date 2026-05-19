@@ -64,7 +64,12 @@ function Piano() {
       const { data: plans } = await supabase.from("meal_plans").select("id").eq("household_id", hid!);
       const ids = (plans ?? []).map((p) => p.id);
       if (!ids.length) return [];
-      const { data } = await supabase.from("meal_plan_entries").select("*").in("meal_plan_id", ids).gte("day_date", monthStart).lte("day_date", monthEnd);
+      const { data } = await supabase
+        .from("meal_plan_entries")
+        .select("*, recipes(id, title, servings, recipe_ingredients(name, quantity, unit))")
+        .in("meal_plan_id", ids)
+        .gte("day_date", monthStart)
+        .lte("day_date", monthEnd);
       return data ?? [];
     },
   });
