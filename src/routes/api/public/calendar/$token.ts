@@ -73,7 +73,7 @@ export const Route = createFileRoute('/api/public/calendar/$token')({
 
         const fromDate = new Date()
         fromDate.setDate(fromDate.getDate() - 28)
-        const fromStr = fromDate.toISOString().slice(0, 10)
+        const fromStr = ymd(fromDate)
 
         const { data: plans } = await supabaseAdmin
           .from('meal_plans')
