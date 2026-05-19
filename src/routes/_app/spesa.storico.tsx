@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { ymd } from "@/lib/date";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useHouseholdId, useExpenses } from "@/lib/queries";
@@ -39,7 +40,7 @@ function Storico() {
   const openAdd = () => {
     setEditing(null);
     setAmount("");
-    setDate(new Date().toISOString().slice(0, 10));
+    setDate(ymd(new Date()));
     setNote("Rettifica manuale");
     setAddOpen(true);
   };

@@ -4,6 +4,7 @@ import { render } from '@react-email/components'
 import * as React from 'react'
 import webpush from 'web-push'
 import { DailyDigestEmail } from '@/lib/email-templates/daily-digest'
+import { ymd } from '@/lib/date'
 
 const SLOT_LABELS: Record<string, string> = {
   breakfast: 'Colazione', lunch: 'Pranzo', dinner: 'Cena', snack: 'Spuntino',
@@ -32,8 +33,12 @@ export const Route = createFileRoute('/api/public/hooks/daily-notifications')({
           webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC!, VAPID_PRIVATE!)
         }
 
-        const currentHour = new Date().getUTCHours()
-        const today = new Date().toISOString().slice(0, 10)
+        // Use Europe/Rome to match the timezone clients store dates in (day_date, expires_on, spent_on)
+        const now = new Date()
+        const currentHour = Number(
+          now.toLocaleString('en-GB', { hour: '2-digit', hour12: false, timeZone: 'Europe/Rome' }).slice(0, 2),
+        )
+        const today = ymd(now)
 
         const log = async (level: string, source: string, message: string, metadata?: any) => {
           await admin.from('admin_activity_log').insert({ level, source, message, metadata })
@@ -64,7 +69,7 @@ export const Route = createFileRoute('/api/public/hooks/daily-notifications')({
 
               const limitDate = new Date()
               limitDate.setDate(limitDate.getDate() + warnDays)
-              const limitStr = limitDate.toISOString().slice(0, 10)
+              const limitStr = ymd(limitDate)
 
               const expiringRes = pref.expiry_alerts
                 ? await admin

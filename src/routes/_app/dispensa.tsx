@@ -1,4 +1,5 @@
 import { createFileRoute, Link, Outlet, useLocation, useSearch } from "@tanstack/react-router";
+import { ymd } from "@/lib/date";
 import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useHouseholdId, useFoodItems, usePantries, usePreferences, daysUntil } from "@/lib/queries";
@@ -74,7 +75,7 @@ function Dispensa() {
   const refund = async () => {
     if (!hid || !stornoItem) return;
     const it = stornoItem;
-    const today = new Date().toISOString().slice(0, 10);
+    const today = ymd(new Date());
     const amt = it.price ? Number(it.price) : 0;
     if (amt > 0) {
       const { error } = await supabase.from("expenses").insert({ household_id: hid, amount: -amt, spent_on: today, note: `Storno: ${it.name}` });

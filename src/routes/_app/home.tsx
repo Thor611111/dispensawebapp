@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { ymd } from "@/lib/date";
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/AppShell";
 import { useHouseholdId, useFoodItems, usePreferences, useExpenses, useProfile, useIsAdmin, currentWeekStart, daysUntil } from "@/lib/queries";
@@ -38,7 +39,7 @@ function Home() {
 
   const loadQuick = async (force = false) => {
     if (!items.length) return;
-    const cacheKey = `quick-${hid}-${new Date().toISOString().slice(0, 10)}`;
+    const cacheKey = `quick-${hid}-${ymd(new Date())}`;
     if (!force) {
       const cached = localStorage.getItem(cacheKey);
       if (cached) { setQuick(JSON.parse(cached)); return; }

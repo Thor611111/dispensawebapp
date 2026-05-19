@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { supabaseAdmin } from '@/integrations/supabase/client.server'
+import { ymd } from '@/lib/date'
 
 function escapeICS(s: string) {
   return String(s ?? '')
@@ -73,7 +74,7 @@ export const Route = createFileRoute('/api/public/calendar/$token')({
 
         const fromDate = new Date()
         fromDate.setDate(fromDate.getDate() - 28)
-        const fromStr = fromDate.toISOString().slice(0, 10)
+        const fromStr = ymd(fromDate)
 
         const { data: plans } = await supabaseAdmin
           .from('meal_plans')

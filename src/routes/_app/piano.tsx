@@ -19,6 +19,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { getRecipeStatus } from "@/lib/recipe-status";
+import { ymd, parseYmd } from "@/lib/date";
 
 export const Route = createFileRoute("/_app/piano")({ component: Piano });
 
@@ -32,12 +33,6 @@ const SLOTS = [
 const MONTHS_IT = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"];
 const DAYS_IT = ["Lun","Mar","Mer","Gio","Ven","Sab","Dom"];
 
-function ymd(d: Date) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
 function startOfMonth(year: number, month: number) { return new Date(year, month, 1); }
 function endOfMonth(year: number, month: number) { return new Date(year, month + 1, 0); }
 
@@ -404,8 +399,7 @@ function DayDrawer({ hid, day, onClose, entriesByDay, ensurePlan, weekStartOf, f
 
   if (!day) return null;
   const entries = entriesByDay[day] ?? [];
-  const [yy, mm, dd] = day.split("-").map(Number);
-  const d = new Date(yy, mm - 1, dd);
+  const d = parseYmd(day);
   const label = d.toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long" });
   const warningDays = Number(prefs?.expiry_warning_days ?? 3);
 
@@ -459,7 +453,7 @@ function DayDrawer({ hid, day, onClose, entriesByDay, ensurePlan, weekStartOf, f
         const { data: rec } = await supabase.from("meal_plan_entries")
           .select("recipe_title_snapshot")
           .in("meal_plan_id", planIds)
-          .gte("day_date", sinceDate.toISOString().slice(0, 10));
+          .gte("day_date", ymd(sinceDate));
         recentTitles = Array.from(new Set((rec ?? []).map((r: any) => r.recipe_title_snapshot).filter(Boolean)));
       }
       // Always exclude current title so AI proposes different
