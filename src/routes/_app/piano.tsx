@@ -79,6 +79,7 @@ function Piano() {
 
   const weekStartOf = (d: Date) => {
     const x = new Date(d);
+    x.setHours(0, 0, 0, 0);
     const day = x.getDay();
     const diff = (day + 6) % 7;
     x.setDate(x.getDate() - diff);

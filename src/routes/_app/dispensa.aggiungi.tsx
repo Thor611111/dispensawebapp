@@ -115,6 +115,7 @@ function Aggiungi() {
   const saveManual = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!hid) return toast.error("Profilo in preparazione, riprova tra un secondo");
+    if (!effectivePantry) return toast.error("Crea prima una dispensa in Impostazioni → Casa");
     setSaving(true);
     const { error } = await supabase.from("food_items").insert({
       household_id: hid,

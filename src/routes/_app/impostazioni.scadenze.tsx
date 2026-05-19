@@ -35,7 +35,7 @@ function Page() {
       expiry_warning_days: days,
       weekly_budget: budget ? Number(budget) : null,
       monthly_budget: monthlyBudget ? Number(monthlyBudget) : null,
-    } as any);
+    } as any, { onConflict: "household_id" });
     if (error) return toast.error(error.message);
     qc.invalidateQueries({ queryKey: ["prefs", hid] });
     toast.success("Salvato");
