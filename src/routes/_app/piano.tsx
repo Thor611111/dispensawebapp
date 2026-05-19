@@ -555,3 +555,109 @@ function DayDrawer({ hid, day, onClose, entriesByDay, ensurePlan, weekStartOf, f
     </Drawer>
   );
 }
+
+function CalendarSyncButton() {
+  const [open, setOpen] = useState(false);
+  const [row, setRow] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const fetchToken = useServerFn(getCalendarToken);
+  const regen = useServerFn(regenerateCalendarToken);
+  const savePrefs = useServerFn(updateCalendarPrefs);
+
+  const load = async () => {
+    setLoading(true);
+    try { const r = await fetchToken({ data: {} as any }); setRow(r); }
+    catch (e: any) { toast.error(e.message ?? "Errore"); setOpen(false); }
+    finally { setLoading(false); }
+  };
+
+  const onOpen = (v: boolean) => {
+    setOpen(v);
+    if (v && !row) load();
+  };
+
+  const origin = typeof window !== "undefined" ? window.location.origin : "https://www.pantryai.it";
+  const httpsUrl = row ? `${origin}/api/public/calendar/${row.token}.ics` : "";
+  const webcalUrl = httpsUrl.replace(/^https?:/, "webcal:");
+  const googleUrl = httpsUrl ? `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(httpsUrl)}` : "";
+
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(httpsUrl); toast.success("Link copiato"); }
+    catch { toast.error("Impossibile copiare"); }
+  };
+
+  const doRegen = async () => {
+    if (!confirm("Rigenerare il link? Il vecchio smetterà di funzionare.")) return;
+    setLoading(true);
+    try { const r = await regen({ data: {} as any }); setRow(r); toast.success("Link rigenerato"); }
+    catch (e: any) { toast.error(e.message ?? "Errore"); }
+    finally { setLoading(false); }
+  };
+
+  const updateField = async (field: string, value: any) => {
+    try {
+      const r = await savePrefs({ data: { [field]: value } as any });
+      setRow(r);
+    } catch (e: any) { toast.error(e.message ?? "Errore"); }
+  };
+
+  return (
+    <>
+      <Button size="sm" variant="outline" onClick={() => onOpen(true)} title="Sincronizza con calendario">
+        <CalendarPlus className="h-4 w-4" />
+      </Button>
+      <Dialog open={open} onOpenChange={onOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Sincronizza con il calendario</DialogTitle>
+            <DialogDescription>
+              Gli aggiornamenti al piano arriveranno automaticamente in Google Calendar o Calendario iOS.
+            </DialogDescription>
+          </DialogHeader>
+          {loading || !row ? (
+            <div className="py-8 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+          ) : (
+            <div className="space-y-4">
+              <div>
+                <Label className="text-xs uppercase font-semibold text-muted-foreground">Link del calendario</Label>
+                <div className="flex gap-2 mt-1">
+                  <Input readOnly value={httpsUrl} className="text-xs font-mono" onFocus={(e) => e.currentTarget.select()} />
+                  <Button size="icon" variant="outline" onClick={copy}><Copy className="h-4 w-4" /></Button>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Button asChild variant="default"><a href={webcalUrl}>Apri in iOS</a></Button>
+                <Button asChild variant="default"><a href={googleUrl} target="_blank" rel="noreferrer">Apri in Google</a></Button>
+              </div>
+              <div className="rounded-lg border bg-muted/40 p-3 space-y-2">
+                <p className="text-xs font-semibold uppercase text-muted-foreground">Orari predefiniti</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {([
+                    ["breakfast_time","Colazione"],
+                    ["lunch_time","Pranzo"],
+                    ["dinner_time","Cena"],
+                    ["snack_time","Spuntino"],
+                  ] as const).map(([k,l]) => (
+                    <label key={k} className="text-xs">
+                      <span className="text-muted-foreground">{l}</span>
+                      <Input type="time" value={String(row[k]).slice(0,5)} onChange={(e) => setRow({ ...row, [k]: e.target.value })} onBlur={(e) => updateField(k, e.target.value)} />
+                    </label>
+                  ))}
+                </div>
+                <label className="text-xs block">
+                  <span className="text-muted-foreground">Durata pasto (minuti)</span>
+                  <Input type="number" min={15} max={180} step={15} value={row.default_meal_minutes}
+                    onChange={(e) => setRow({ ...row, default_meal_minutes: Number(e.target.value) })}
+                    onBlur={(e) => updateField("default_meal_minutes", Math.min(180, Math.max(15, Number(e.target.value) || 60)))} />
+                </label>
+              </div>
+              <Button variant="ghost" size="sm" onClick={doRegen} className="w-full text-muted-foreground">
+                <RotateCw className="h-4 w-4 mr-1" /> Rigenera link
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
