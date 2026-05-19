@@ -40,7 +40,7 @@ function Storico() {
   const openAdd = () => {
     setEditing(null);
     setAmount("");
-    ymd(setDate(new Date()));
+    setDate(ymd(new Date()));
     setNote("Rettifica manuale");
     setAddOpen(true);
   };
