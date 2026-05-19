@@ -404,7 +404,8 @@ function DayDrawer({ hid, day, onClose, entriesByDay, ensurePlan, weekStartOf, f
 
   if (!day) return null;
   const entries = entriesByDay[day] ?? [];
-  const d = new Date(day);
+  const [yy, mm, dd] = day.split("-").map(Number);
+  const d = new Date(yy, mm - 1, dd);
   const label = d.toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long" });
   const warningDays = Number(prefs?.expiry_warning_days ?? 3);
 
