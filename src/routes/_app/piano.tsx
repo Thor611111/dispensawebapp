@@ -454,7 +454,7 @@ function DayDrawer({ hid, day, onClose, entriesByDay, ensurePlan, weekStartOf, f
         const { data: rec } = await supabase.from("meal_plan_entries")
           .select("recipe_title_snapshot")
           .in("meal_plan_id", planIds)
-          .gte("day_date", sinceDate.toISOString().slice(0, 10));
+          .gte("day_date", ymd(sinceDate));
         recentTitles = Array.from(new Set((rec ?? []).map((r: any) => r.recipe_title_snapshot).filter(Boolean)));
       }
       // Always exclude current title so AI proposes different
