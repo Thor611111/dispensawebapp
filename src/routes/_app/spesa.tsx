@@ -293,12 +293,44 @@ function Spesa() {
 
   const generateFromPlan = async () => {
     if (!hid) return;
-    const entries = (currentPlan as any)?.meal_plan_entries ?? [];
-    if (!entries.length) {
-      return toast.error("Nessun piano pasti per questa settimana. Vai su Piano per generarlo.");
-    }
     setPlanGenLoading(true);
-    const meals = entries.map((e: any) => ({ title: e.recipe_title_snapshot ?? e.recipes?.title, notes: e.notes }));
+    // Fetch all current+future entries across all plans of the household
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const { data: plans } = await supabase.from("meal_plans").select("id").eq("household_id", hid);
+    const planIds = (plans ?? []).map((p: any) => p.id);
+    if (!planIds.length) {
+      setPlanGenLoading(false);
+      return toast.error("Nessun piano pasti trovato. Vai su Piano per generarlo.");
+    }
+    const { data: entries = [] } = await supabase
+      .from("meal_plan_entries")
+      .select("recipe_id, recipe_title_snapshot, notes, day_date")
+      .in("meal_plan_id", planIds)
+      .gte("day_date", todayStr);
+    if (!entries || !entries.length) {
+      setPlanGenLoading(false);
+      return toast.error("Nessun pasto da oggi in poi nel piano.");
+    }
+    const recipeIds = Array.from(new Set(entries.map((e: any) => e.recipe_id).filter(Boolean)));
+    let recipesById: Record<string, any> = {};
+    if (recipeIds.length) {
+      const { data: recs2 } = await supabase
+        .from("recipes")
+        .select("id, title, servings, recipe_ingredients(name, quantity, unit)")
+        .in("id", recipeIds);
+      recipesById = Object.fromEntries((recs2 ?? []).map((r: any) => [r.id, r]));
+    }
+    const meals = entries.map((e: any) => {
+      const r = e.recipe_id ? recipesById[e.recipe_id] : null;
+      return {
+        title: r?.title || e.recipe_title_snapshot || "Pasto",
+        notes: e.notes ?? null,
+        servings: r?.servings ?? null,
+        ingredients: (r?.recipe_ingredients ?? []).map((i: any) => ({
+          name: i.name, quantity: i.quantity, unit: i.unit,
+        })),
+      };
+    });
     const { data, error } = await supabase.functions.invoke("ai-plan-to-shopping", {
       body: { meals, pantry: foods, preferences: prefs },
     });
