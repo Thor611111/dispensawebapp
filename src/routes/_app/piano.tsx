@@ -203,12 +203,42 @@ function Piano() {
   const addToShopping = async () => {
     if (!hid) return;
     setShoppingLoading(true);
-    const meals = entries.map((e: any) => ({ title: e.recipe_title_snapshot, notes: e.notes }));
+    // Only future + today entries, fetch joined recipe ingredients
+    const todayStr = ymd(new Date());
+    const futureEntries = (entries as any[]).filter((e) => e.day_date >= todayStr);
+    if (!futureEntries.length) {
+      setShoppingLoading(false);
+      return toast.message("Nessun pasto da oggi in poi nel piano");
+    }
+    const recipeIds = Array.from(new Set(futureEntries.map((e) => e.recipe_id).filter(Boolean)));
+    let recipesById: Record<string, any> = {};
+    if (recipeIds.length) {
+      const { data: recs } = await supabase
+        .from("recipes")
+        .select("id, title, servings, recipe_ingredients(name, quantity, unit)")
+        .in("id", recipeIds);
+      recipesById = Object.fromEntries((recs ?? []).map((r: any) => [r.id, r]));
+    }
+    const meals = futureEntries.map((e: any) => {
+      const r = e.recipe_id ? recipesById[e.recipe_id] : null;
+      return {
+        title: r?.title || e.recipe_title_snapshot || "Pasto",
+        notes: e.notes ?? null,
+        servings: r?.servings ?? null,
+        ingredients: (r?.recipe_ingredients ?? []).map((i: any) => ({
+          name: i.name, quantity: i.quantity, unit: i.unit,
+        })),
+      };
+    });
     const { data, error } = await supabase.functions.invoke("ai-plan-to-shopping", {
       body: { meals, pantry: items, preferences: prefs },
     });
     if (error || data?.error) { setShoppingLoading(false); return toast.error(error?.message ?? data?.error); }
     const missing = (data.items ?? []) as any[];
+    if (!missing.length) {
+      setShoppingLoading(false);
+      return toast.success("Hai già tutto in dispensa 🎉");
+    }
     // dedupe vs current shopping list
     const { data: current } = await supabase.from("shopping_list_items").select("name").eq("household_id", hid);
     const existingNames = new Set((current ?? []).map((c) => c.name.toLowerCase()));
@@ -218,7 +248,9 @@ function Piano() {
     }));
     if (toInsert.length) await supabase.from("shopping_list_items").insert(toInsert);
     setShoppingLoading(false);
-    toast.success(`${toInsert.length} articoli aggiunti alla spesa`);
+    toast.success(toInsert.length
+      ? `${toInsert.length} articoli aggiunti alla spesa`
+      : "Sono già tutti nella tua spesa");
     qc.invalidateQueries({ queryKey: ["shopping", hid] });
   };
 
