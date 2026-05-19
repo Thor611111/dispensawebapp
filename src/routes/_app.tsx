@@ -1,7 +1,7 @@
 import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { AppShell } from "@/components/AppShell";
+import { AppShell, FullPageLoader } from "@/components/AppShell";
 
 export const Route = createFileRoute("/_app")({
   component: AppLayout,
@@ -19,8 +19,8 @@ function AppLayout() {
 
   if (loading || !user) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-muted-foreground">
-        Caricamento…
+      <div className="flex min-h-screen items-center justify-center">
+        <FullPageLoader />
       </div>
     );
   }

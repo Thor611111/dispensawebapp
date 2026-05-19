@@ -1,6 +1,7 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { Home, Package, Calendar, ShoppingCart, BarChart3, Settings as SettingsIcon } from "lucide-react";
+import { Home, Package, Calendar, ShoppingCart, BarChart3, Settings as SettingsIcon, Sun, Moon, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTheme } from "@/lib/theme";
 
 const tabs = [
   { to: "/home", label: "Home", icon: Home },
@@ -44,13 +45,33 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 }
 
 export function PageHeader({ title, subtitle, right }: { title: string; subtitle?: string; right?: React.ReactNode }) {
+  const { resolved, setTheme } = useTheme();
   return (
     <div className="mb-5 flex items-end justify-between gap-3 border-b border-border/40 pb-3">
       <div>
         <h1 className="text-2xl font-bold leading-tight tracking-tight">{title}</h1>
         {subtitle ? <p className="mt-1 text-[13px] text-muted-foreground">{subtitle}</p> : null}
       </div>
-      {right}
+      <div className="flex items-center gap-1.5">
+        {right}
+        <button
+          type="button"
+          aria-label={resolved === "dark" ? "Attiva tema chiaro" : "Attiva tema scuro"}
+          onClick={() => setTheme(resolved === "dark" ? "light" : "dark")}
+          className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition hover:bg-secondary/60 hover:text-foreground"
+        >
+          {resolved === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export function FullPageLoader({ label = "Caricamento…" }: { label?: string }) {
+  return (
+    <div className="flex min-h-[40vh] flex-col items-center justify-center gap-3 text-muted-foreground">
+      <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      <p className="text-sm">{label}</p>
     </div>
   );
 }

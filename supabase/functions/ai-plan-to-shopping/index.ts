@@ -13,7 +13,14 @@ Deno.serve(async (req) => {
     const apiKey = Deno.env.get("LOVABLE_API_KEY");
     if (!apiKey) throw new Error("LOVABLE_API_KEY missing");
 
-    const mealList = meals.map((m: any) => `- ${m.title}${m.notes ? ` (${m.notes})` : ""}`).join("\n") || "(nessun pasto)";
+    const mealList = meals.map((m: any) => {
+      const ing = (m.ingredients ?? [])
+        .map((i: any) => `${i.quantity ?? ""} ${i.unit ?? ""} ${i.name}`.trim())
+        .join(", ");
+      const srv = m.servings ? ` · ${m.servings} porz.` : "";
+      const notes = m.notes ? ` (${m.notes})` : "";
+      return `- ${m.title}${srv}${notes}${ing ? `\n   ingredienti: ${ing}` : ""}`;
+    }).join("\n") || "(nessun pasto)";
     const pantryList = pantry.map((p: any) => `${p.name} ${p.quantity ?? ""}${p.unit ?? ""}`).join(", ") || "(vuota)";
     const prefStr = `Diete: ${(preferences?.diets ?? []).join(", ") || "—"} · Allergie: ${(preferences?.allergies ?? []).join(", ") || "—"} · Persone: ${preferences?.household_size ?? 2}`;
 
