@@ -32,7 +32,12 @@ const SLOTS = [
 const MONTHS_IT = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"];
 const DAYS_IT = ["Lun","Mar","Mer","Gio","Ven","Sab","Dom"];
 
-function ymd(d: Date) { return d.toISOString().slice(0, 10); }
+function ymd(d: Date) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
 function startOfMonth(year: number, month: number) { return new Date(year, month, 1); }
 function endOfMonth(year: number, month: number) { return new Date(year, month + 1, 0); }
 
