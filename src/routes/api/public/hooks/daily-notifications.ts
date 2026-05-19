@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { createClient } from '@supabase/supabase-js'
 import { render } from '@react-email/components'
 import * as React from 'react'
+import webpush from 'web-push'
 import { DailyDigestEmail } from '@/lib/email-templates/daily-digest'
 
 const SLOT_LABELS: Record<string, string> = {
@@ -22,6 +23,14 @@ export const Route = createFileRoute('/api/public/hooks/daily-notifications')({
         const admin = createClient(SUPABASE_URL, SERVICE_KEY, {
           auth: { persistSession: false, autoRefreshToken: false },
         })
+
+        const VAPID_PUBLIC = process.env.VAPID_PUBLIC_KEY
+        const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY
+        const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:hello@pantryai.it'
+        const pushReady = Boolean(VAPID_PUBLIC && VAPID_PRIVATE)
+        if (pushReady) {
+          webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC!, VAPID_PRIVATE!)
+        }
 
         const currentHour = new Date().getUTCHours()
         const today = new Date().toISOString().slice(0, 10)
@@ -159,6 +168,42 @@ export const Route = createFileRoute('/api/public/hooks/daily-notifications')({
                     recipient_email: email,
                     status: 'pending',
                   })
+                }
+
+                if (pushReady && pref.push_enabled) {
+                  const { data: subs } = await admin
+                    .from('push_subscriptions')
+                    .select('endpoint, p256dh, auth')
+                    .eq('user_id', m.user_id)
+                  const parts: string[] = []
+                  if (expiringItems.length) parts.push(`${expiringItems.length} in scadenza`)
+                  if (todaysMeals.length) parts.push(`${todaysMeals.length} pasti oggi`)
+                  if (shoppingItems.length) parts.push(`${shoppingItems.length} da comprare`)
+                  const title = 'Il tuo riepilogo PantryAI'
+                  const body = parts.join(' · ') || 'Apri per i dettagli'
+                  const payload = JSON.stringify({ title, body, url: '/home' })
+                  for (const sub of subs ?? []) {
+                    try {
+                      await webpush.sendNotification(
+                        { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+                        payload,
+                      )
+                      await admin.from('push_send_log').insert({
+                        user_id: m.user_id, household_id: householdId,
+                        category: 'daily_digest', title, body, status: 'sent',
+                      })
+                    } catch (pushErr: any) {
+                      const code = pushErr?.statusCode
+                      if (code === 404 || code === 410) {
+                        await admin.from('push_subscriptions').delete().eq('endpoint', sub.endpoint)
+                      }
+                      await admin.from('push_send_log').insert({
+                        user_id: m.user_id, household_id: householdId,
+                        category: 'daily_digest', title, body,
+                        status: 'failed', error_message: pushErr?.message ?? String(pushErr),
+                      })
+                    }
+                  }
                 }
               }
             } catch (e: any) {
