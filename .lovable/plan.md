@@ -1,66 +1,60 @@
-# Fix email auth + sessione persistente + notifiche in-app
+## Sincronizzazione del Piano pasti con Google Calendar / Calendario iOS
 
-## Diagnosi
+### Approccio consigliato: feed ICS + download .ics
 
-### 1) Email auth non inviate
-- Dominio `notify.pantryai.it` ✅ verificato.
-- Ultimo invio in `email_send_log`: **8 maggio** (oggi 19 maggio → 11 giorni di silenzio).
-- Nessun log auth recente: `auth-email-hook` non viene chiamato. Probabili cause: Lovable Emails disattivato in Cloud → Emails, o service-role key ruotata (vault secret del dispatcher non più valido).
+Invece di integrare singolarmente Google Calendar API (richiederebbe OAuth per-utente, schermata di consenso Google, gestione token, e non risolverebbe iOS), uso lo standard **iCalendar (.ics)** che funziona nativamente sia con Google Calendar sia con il Calendario di iOS/macOS, senza login né configurazioni esterne.
 
-### 2) Sessione utente
-- `client.ts` ha già `persistSession: true` + `autoRefreshToken: true` → di default l'utente resta loggato.
-- `login.tsx` ha logica "Ricordami" che **cancella `sb-*` da localStorage** prima del login: inutile e dannosa.
-- Manca un listener `onAuthStateChange` a livello root che invalidi le query React-Query al refresh token → la sessione "sembra" persa e l'utente viene rimbalzato.
+Due modalità complementari:
 
-### 3) Notifiche in-app
-- `daily-notifications` (route `/api/public/hooks/daily-notifications`) richiede `Authorization: Bearer SERVICE_ROLE_KEY`, ma **nessun cron la sta chiamando** (zero righe in `admin_activity_log` da `notifications`).
-- `impostazioni/notifiche.tsx` per le push fa solo `Notification.requestPermission()` → **non registra un service worker, non crea una PushSubscription, non salva nulla in `push_subscriptions`**. Quindi le notifiche push non arrivano mai.
-- La tabella `push_subscriptions` esiste (visibile in `admin_overview`) ma è vuota perché nessuno la popola.
+1. **Abbonamento (feed live)** — l'utente sottoscrive un URL `webcal://` e ogni modifica al piano pasti si riflette nel suo calendario entro qualche ora (Google: ogni 8-24h, iOS: configurabile fino a "ogni 15 min").
+2. **Download singolo (.ics)** — pulsante "Aggiungi al calendario" su un pasto/giorno/settimana che scarica un file `.ics` aprendolo direttamente nell'app calendario.
 
-## Cosa farò
+### Cosa cambia
 
-### A. Email auth — ripristino
-1. Riattivare Lovable Emails (`toggle_project_emails enabled: true`) se disattivato.
-2. Ri-eseguire `setup_email_infra` (idempotente): aggiorna vault secret + cron `process-email-queue` con la service-role key corrente.
-3. Re-scaffold con `confirm_overwrite: true` per riallineare l'hook lato Supabase (preserva i template `.tsx`).
-4. Test reale con un reset password e verifica `email_send_log` → status `sent`.
+**Frontend — `/_app/piano.tsx`**
+- Pulsante "Sincronizza con calendario" che apre un dialog con:
+  - URL del feed `webcal://pantryai.it/api/public/calendar/<token>.ics` con bottone "Copia"
+  - Bottoni rapidi: "Apri in Google Calendar" (link `https://calendar.google.com/calendar/r?cid=...`) e "Apri in Calendario iOS" (link `webcal://...` → iOS chiede conferma di abbonamento)
+  - Spiegazione breve "Gli aggiornamenti al piano arriveranno automaticamente"
+- Su ogni entry e nel drawer del giorno: icona "Aggiungi al calendario" che scarica `.ics` del singolo pasto
 
-### B. Sessione persistente "vera"
-1. **`src/routes/login.tsx`**: rimuovere lo state `remember`, il checkbox "Ricordami" e il blocco che cancella `sb-*`. Mostrare nota "Resterai connesso su questo dispositivo".
-2. **`src/routes/__root.tsx`**: aggiungere (se non c'è già) un `useEffect` con `supabase.auth.onAuthStateChange` che fa `router.invalidate()` + `queryClient.invalidateQueries()` per evitare stale data al refresh.
-3. Nessuna modifica a `client.ts` (file auto-generato).
+**Frontend — `/_app/impostazioni`**
+- Nuova voce "Sincronizzazione calendario" per gestire/rigenerare il token e scegliere durata pasto di default (30/60/90 min) e orari standard (colazione 08:00, pranzo 13:00, cena 20:00, snack 17:00).
 
-### C. Notifiche in-app
-1. **Notifiche push reali** (`impostazioni/notifiche.tsx`):
-   - Registrare `/sw.js` come Service Worker (già esiste in `public/`).
-   - Chiamare `registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: <VAPID_PUBLIC_KEY> })`.
-   - Salvare la `PushSubscription` (endpoint + p256dh + auth) in `push_subscriptions` collegata all'utente.
-   - Pulsante "Disattiva" che fa `unsubscribe()` ed elimina la riga.
-   - Aggiungere listener `push` in `public/sw.js` che mostra `self.registration.showNotification(...)`.
-   - **Richiede secret VAPID** (`VAPID_PUBLIC_KEY` + `VAPID_PRIVATE_KEY`): chiederò all'utente di aggiungerli via `add_secret`. In assenza, il pulsante mostra messaggio "Push non configurate".
-2. **Digest giornaliero (`daily-notifications`)**:
-   - Verificare se esiste un `cron.job` che lo chiama (richiede migration via Management API perché `cron` non è leggibile via psql con questo ruolo).
-   - Creare via migration un `cron.schedule` ogni ora che fa `net.http_post` verso `https://dispensawebapp.lovable.app/api/public/hooks/daily-notifications` con header `Authorization: Bearer <service_role>` (recuperato da `vault.secrets`).
-   - Verificare che le righe di `notification_preferences` abbiano `daily_send_hour` coerente con UTC.
-3. **In-app feed** (opzionale, se l'utente intende "centro notifiche dentro l'app" più che push): creare una tabella `notifications` + dropdown campanella nell'`AppShell`. Da decidere — vedi domanda sotto.
+**Backend — server functions + route pubblica**
+- `src/lib/calendar.functions.ts` (server fn protette):
+  - `getCalendarToken()` → restituisce/crea il token corrente dell'utente
+  - `regenerateCalendarToken()` → invalida il vecchio (se lo condividi per errore)
+- `src/routes/api/public/calendar/$token.ts` (route pubblica, no auth):
+  - Risolve token → household
+  - Legge `meal_plan_entries` delle ultime 4 settimane + future
+  - Costruisce ICS con `BEGIN:VEVENT` per ogni pasto, con `UID` stabile per consentire l'aggiornamento (no duplicati), `DTSTART` calcolato da `day_date` + slot, `SUMMARY` "🍽 {ricetta}", `DESCRIPTION` con note + ingredienti, `LOCATION` "Casa"
+  - Header `Content-Type: text/calendar; charset=utf-8` + cache 10 min
+- `src/routes/api/public/calendar/event.$entryId.ics.ts` (one-shot, richiede token in query string)
 
-## File toccati
-- `src/routes/login.tsx` — rimozione Ricordami
-- `src/routes/__root.tsx` — listener auth state (se mancante)
-- `src/routes/_app/impostazioni.notifiche.tsx` — flow push reale
-- `public/sw.js` — handler `push` / `notificationclick`
-- Nuova migration — cron job per daily-notifications
-- (Eventuale) tabella `notifications` + componente campanella
+### Database (1 migrazione)
 
-## Fuori scope
-- Cambio provider email
-- Modifiche RLS non strettamente necessarie
-- Notifiche real-time via Supabase Realtime (a meno di richiesta esplicita)
+Nuova tabella `calendar_tokens`:
+- `user_id`, `household_id`, `token` (text random 32 byte, indicizzato unique), `default_meal_minutes` int, `breakfast_time`/`lunch_time`/`dinner_time`/`snack_time` time, `created_at`, `last_accessed_at`
+- RLS: l'utente vede/aggiorna solo la propria riga; la route pubblica usa `supabaseAdmin` per risolvere il token.
 
-## Domanda
-Per "notifiche in app" intendi:
-- (1) **Push del browser/PWA** (banner anche con app chiusa) — quello che oggi è rotto in `impostazioni/notifiche.tsx`?
-- (2) **Centro notifiche interno** (campanella in alto con feed di eventi)?
-- (3) **Entrambe**?
+### Cosa NON faccio (e perché)
 
-Procedo con (1) + cron del digest come default, salvo diversa indicazione.
+- **No Google Calendar API diretta**: richiederebbe OAuth per-utente con Google Cloud Console, gestione refresh token, ban se la verifica del consent screen non passa. Non porta benefici reali rispetto a ICS visto che basta cliccare "Aggiungi a Google Calendar" sul nostro link `cid=`.
+- **No EventKit iOS**: serve un'app nativa. Su PWA si usa esattamente ICS.
+
+### Aspetti UX
+
+- iOS richiede la conferma esplicita dell'abbonamento (è lo standard del sistema, non bypassabile).
+- Google Calendar mostra "Aggiungi calendario" → conferma → comparirà sotto "Altri calendari".
+- I refresh non sono istantanei (limite degli aggregatori); per modifiche immediate l'utente può sempre scaricare il singolo `.ics` aggiornato.
+
+### Piano di esecuzione
+
+1. Migrazione `calendar_tokens` + RLS
+2. `src/lib/calendar.functions.ts` (token CRUD)
+3. `src/routes/api/public/calendar/$token.ts` (feed ICS) + builder ICS
+4. UI nel piano (`/_app/piano.tsx`): dialog "Sincronizza calendario" + pulsante "Aggiungi al calendario" per singolo pasto
+5. UI in impostazioni: gestione token + orari default
+
+Stimo ~1 turno per tutto. Confermami e procedo, oppure dimmi se preferisci che integri SOLO il download `.ics` per singolo pasto (più semplice, niente tabella nuova) prima del feed completo.
