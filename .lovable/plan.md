@@ -1,64 +1,66 @@
-# Revisione pagine e interfaccia
+# Fix email auth + sessione persistente + notifiche in-app
 
-Obiettivo: ogni pagina ha un ruolo chiaro, niente doppioni, gerarchia visiva più calma e leggibile su mobile.
+## Diagnosi
 
-## Audit per pagina (cosa tengo / cosa tolgo)
+### 1) Email auth non inviate
+- Dominio `notify.pantryai.it` ✅ verificato.
+- Ultimo invio in `email_send_log`: **8 maggio** (oggi 19 maggio → 11 giorni di silenzio).
+- Nessun log auth recente: `auth-email-hook` non viene chiamato. Probabili cause: Lovable Emails disattivato in Cloud → Emails, o service-role key ruotata (vault secret del dispatcher non più valido).
 
-### Home — dashboard veloce
-- TIENE: saluto, widget budget (link a Stats), tile "In scadenza ≤3g", alert scadenze, ricette rapide AI, scorciatoia admin.
-- TOGLIE: tile duplicato "Speso questa settimana" (è già nel widget budget) e griglia 5-icone (Dispensa/Ricette/Piano/Spesa/Stats) che duplica la bottom nav.
-- AGGIUNGE: una sola riga "Azioni rapide" con 2 CTA contestuali — "Aggiungi alimento" e "Scansiona scontrino".
+### 2) Sessione utente
+- `client.ts` ha già `persistSession: true` + `autoRefreshToken: true` → di default l'utente resta loggato.
+- `login.tsx` ha logica "Ricordami" che **cancella `sb-*` da localStorage** prima del login: inutile e dannosa.
+- Manca un listener `onAuthStateChange` a livello root che invalidi le query React-Query al refresh token → la sessione "sembra" persa e l'utente viene rimbalzato.
 
-### Dispensa — inventario
-- TIENE: filtro Tutto/In scadenza, switch dispense, filtro location, lista con stepper qty, badge scadenza, storno, elimina, svuota.
-- TOGLIE: bottone "Ricalcola kcal" per riga (raro, sposta in detail / menu). Rimuove subtitle con kcal totali (rumore numerico).
-- MIGLIORA: action per riga in un menu "⋯" invece di 3 icone affiancate → riga più pulita; sticky filter bar.
+### 3) Notifiche in-app
+- `daily-notifications` (route `/api/public/hooks/daily-notifications`) richiede `Authorization: Bearer SERVICE_ROLE_KEY`, ma **nessun cron la sta chiamando** (zero righe in `admin_activity_log` da `notifications`).
+- `impostazioni/notifiche.tsx` per le push fa solo `Notification.requestPermission()` → **non registra un service worker, non crea una PushSubscription, non salva nulla in `push_subscriptions`**. Quindi le notifiche push non arrivano mai.
+- La tabella `push_subscriptions` esiste (visibile in `admin_overview`) ma è vuota perché nessuno la popola.
 
-### Spesa — acquisto
-- TIENE: lista articoli, aggiungi rapido, scansione scontrino, chiusura con totale, "Dal piano", storico.
-- TOGLIE: card "Consigliati per te" (AI products) — duplica funzionalità di Piano/Dispensa, raramente azionata; spostata sotto un toggle/accordion "Suggerimenti AI".
-- TOGLIE: select dispensa di destinazione sempre visibile → solo quando ci sono >1 dispense, compatto.
+## Cosa farò
 
-### Piano — calendario pasti
-- TIENE: vista mese, generazione giorno/settimana/mese, drawer giorno, sposta/sostituisci ricetta, genera spesa da piano.
-- TOGLIE: niente, ma compatta header (un solo blocco generazione invece di pulsanti sparsi).
+### A. Email auth — ripristino
+1. Riattivare Lovable Emails (`toggle_project_emails enabled: true`) se disattivato.
+2. Ri-eseguire `setup_email_infra` (idempotente): aggiorna vault secret + cron `process-email-queue` con la service-role key corrente.
+3. Re-scaffold con `confirm_overwrite: true` per riallineare l'hook lato Supabase (preserva i template `.tsx`).
+4. Test reale con un reset password e verifica `email_send_log` → status `sent`.
 
-### Ricette — libreria
-- TIENE: lista salvate, importa/nuova, dettaglio.
-- VALUTA: rimozione tab/filtri poco usati (verifico in implementazione).
+### B. Sessione persistente "vera"
+1. **`src/routes/login.tsx`**: rimuovere lo state `remember`, il checkbox "Ricordami" e il blocco che cancella `sb-*`. Mostrare nota "Resterai connesso su questo dispositivo".
+2. **`src/routes/__root.tsx`**: aggiungere (se non c'è già) un `useEffect` con `supabase.auth.onAuthStateChange` che fa `router.invalidate()` + `queryClient.invalidateQueries()` per evitare stale data al refresh.
+3. Nessuna modifica a `client.ts` (file auto-generato).
 
-### Statistiche — analisi
-- TIENE: KPI, area chart cumulato, top categorie, per dispensa/membro, export CSV, editor budget inline, forecast.
-- MIGLIORA: ordine sezioni (KPI → trend → categorie → forecast → export), tipografia più calma.
+### C. Notifiche in-app
+1. **Notifiche push reali** (`impostazioni/notifiche.tsx`):
+   - Registrare `/sw.js` come Service Worker (già esiste in `public/`).
+   - Chiamare `registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: <VAPID_PUBLIC_KEY> })`.
+   - Salvare la `PushSubscription` (endpoint + p256dh + auth) in `push_subscriptions` collegata all'utente.
+   - Pulsante "Disattiva" che fa `unsubscribe()` ed elimina la riga.
+   - Aggiungere listener `push` in `public/sw.js` che mostra `self.registration.showNotification(...)`.
+   - **Richiede secret VAPID** (`VAPID_PUBLIC_KEY` + `VAPID_PRIVATE_KEY`): chiederò all'utente di aggiungerli via `add_secret`. In assenza, il pulsante mostra messaggio "Push non configurate".
+2. **Digest giornaliero (`daily-notifications`)**:
+   - Verificare se esiste un `cron.job` che lo chiama (richiede migration via Management API perché `cron` non è leggibile via psql con questo ruolo).
+   - Creare via migration un `cron.schedule` ogni ora che fa `net.http_post` verso `https://dispensawebapp.lovable.app/api/public/hooks/daily-notifications` con header `Authorization: Bearer <service_role>` (recuperato da `vault.secrets`).
+   - Verificare che le righe di `notification_preferences` abbiano `daily_send_hour` coerente con UTC.
+3. **In-app feed** (opzionale, se l'utente intende "centro notifiche dentro l'app" più che push): creare una tabella `notifications` + dropdown campanella nell'`AppShell`. Da decidere — vedi domanda sotto.
 
-### Impostazioni — invariata (già a livelli)
-
-## Restyling globale (confortevole)
-
-1. **Densità**: `PageHeader` con padding ridotto su mobile; card `p-4` invece di `p-5/6` dove ridondante.
-2. **Tipografia**: H1 `text-2xl` (era 1.6rem), subtitle `text-[13px]`, niente uppercase tracking sparso.
-3. **Spaziature**: gap verticale uniforme `space-y-3` tra blocchi pagina.
-4. **Bottom nav**: pill attiva con `bg-primary text-primary-foreground` (più leggibile del `bg-primary/10`), label sempre visibili.
-5. **PageHeader sticky** opzionale su pagine lunghe (Dispensa, Piano).
-6. **Colori semantici**: usare `--color-danger/warning/success` già definiti, sostituire `text-amber-500` hardcoded in Dispensa.
-
-## Bug fix mirati
-- Dispensa: tab "In scadenza" usa `warnDays` ma contatore home usa `3` fisso → allineo entrambi a `prefs.expiry_warning_days`.
-- Spesa: `void expenses` rimosso, riordino import non usati (`Receipt`, `CheckCircle2`, `HelpCircle`, `PackagePlus`, `AlertTriangle` se non più referenziati dopo edit).
-- Home: tile "speso settimana" rimosso elimina anche `weekSpent` se non più usato.
-
-## File da toccare
-- `src/components/AppShell.tsx` (nav + header)
-- `src/routes/_app/home.tsx`
-- `src/routes/_app/dispensa.tsx`
-- `src/routes/_app/spesa.tsx`
-- `src/routes/_app/piano.tsx` (solo header compatto)
-- `src/routes/_app/statistiche.tsx` (riordino)
-- `src/styles.css` (eventuale token spacing)
+## File toccati
+- `src/routes/login.tsx` — rimozione Ricordami
+- `src/routes/__root.tsx` — listener auth state (se mancante)
+- `src/routes/_app/impostazioni.notifiche.tsx` — flow push reale
+- `public/sw.js` — handler `push` / `notificationclick`
+- Nuova migration — cron job per daily-notifications
+- (Eventuale) tabella `notifications` + componente campanella
 
 ## Fuori scope
-- Nuove feature business (notifiche push, condivisione liste, OCR alternativo).
-- Modifiche schema DB.
-- Refactor edge function.
+- Cambio provider email
+- Modifiche RLS non strettamente necessarie
+- Notifiche real-time via Supabase Realtime (a meno di richiesta esplicita)
 
-Confermi e procedo? Se vuoi modificare scope (es. tenere "Consigliati per te" in Spesa, o non toccare Piano), dimmelo prima di partire.
+## Domanda
+Per "notifiche in app" intendi:
+- (1) **Push del browser/PWA** (banner anche con app chiusa) — quello che oggi è rotto in `impostazioni/notifiche.tsx`?
+- (2) **Centro notifiche interno** (campanella in alto con feed di eventi)?
+- (3) **Entrambe**?
+
+Procedo con (1) + cron del digest come default, salvo diversa indicazione.

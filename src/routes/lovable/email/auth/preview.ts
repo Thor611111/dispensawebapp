@@ -18,7 +18,7 @@ const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
 }
 
 // Configuration
-const SITE_NAME = "PantryAI"
+const SITE_NAME = "dispensawebapp"
 const ROOT_DOMAIN = "pantryai.it"
 
 // Sample data for preview mode ONLY (not used in actual email sending).

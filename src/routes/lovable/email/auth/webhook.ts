@@ -12,12 +12,12 @@ import { EmailChangeEmail } from '@/lib/email-templates/email-change'
 import { ReauthenticationEmail } from '@/lib/email-templates/reauthentication'
 
 const EMAIL_SUBJECTS: Record<string, string> = {
-  signup: 'Conferma la tua email',
-  invite: 'Sei stato invitato',
-  magiclink: 'Il tuo link di accesso',
-  recovery: 'Reimposta la password',
-  email_change: 'Conferma il cambio email',
-  reauthentication: 'Il tuo codice di verifica',
+  signup: 'Confirm your email',
+  invite: "You've been invited",
+  magiclink: 'Your login link',
+  recovery: 'Reset your password',
+  email_change: 'Confirm your new email',
+  reauthentication: 'Your verification code',
 }
 
 // Template mapping
@@ -31,7 +31,7 @@ const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
 }
 
 // Configuration
-const SITE_NAME = "PantryAI"
+const SITE_NAME = "dispensawebapp"
 const SENDER_DOMAIN = "notify.pantryai.it"
 const ROOT_DOMAIN = "pantryai.it"
 const FROM_DOMAIN = "pantryai.it"
@@ -160,7 +160,7 @@ export const Route = createFileRoute("/lovable/email/auth/webhook")({
           )
         }
 
-        const supabase = createClient(supabaseUrl, supabaseServiceKey)
+        const supabase: any = createClient(supabaseUrl, supabaseServiceKey)
         const messageId = crypto.randomUUID()
 
         // Log pending BEFORE enqueue so we have a record even if enqueue crashes
