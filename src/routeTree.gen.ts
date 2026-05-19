@@ -42,6 +42,7 @@ import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/e
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 import { Route as ApiPublicHooksDailyNotificationsRouteImport } from './routes/api/public/hooks/daily-notifications'
+import { Route as ApiPublicCalendarTokenRouteImport } from './routes/api/public/calendar/$token'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -212,6 +213,11 @@ const ApiPublicHooksDailyNotificationsRoute =
     path: '/api/public/hooks/daily-notifications',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicCalendarTokenRoute = ApiPublicCalendarTokenRouteImport.update({
+  id: '/api/public/calendar/$token',
+  path: '/api/public/calendar/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -242,6 +248,7 @@ export interface FileRoutesByFullPath {
   '/impostazioni/sicurezza': typeof AppImpostazioniSicurezzaRoute
   '/ricette/nuova': typeof AppRicetteNuovaRoute
   '/spesa/storico': typeof AppSpesaStoricoRoute
+  '/api/public/calendar/$token': typeof ApiPublicCalendarTokenRoute
   '/api/public/hooks/daily-notifications': typeof ApiPublicHooksDailyNotificationsRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -275,6 +282,7 @@ export interface FileRoutesByTo {
   '/impostazioni/sicurezza': typeof AppImpostazioniSicurezzaRoute
   '/ricette/nuova': typeof AppRicetteNuovaRoute
   '/spesa/storico': typeof AppSpesaStoricoRoute
+  '/api/public/calendar/$token': typeof ApiPublicCalendarTokenRoute
   '/api/public/hooks/daily-notifications': typeof ApiPublicHooksDailyNotificationsRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -311,6 +319,7 @@ export interface FileRoutesById {
   '/_app/impostazioni/sicurezza': typeof AppImpostazioniSicurezzaRoute
   '/_app/ricette/nuova': typeof AppRicetteNuovaRoute
   '/_app/spesa/storico': typeof AppSpesaStoricoRoute
+  '/api/public/calendar/$token': typeof ApiPublicCalendarTokenRoute
   '/api/public/hooks/daily-notifications': typeof ApiPublicHooksDailyNotificationsRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -347,6 +356,7 @@ export interface FileRouteTypes {
     | '/impostazioni/sicurezza'
     | '/ricette/nuova'
     | '/spesa/storico'
+    | '/api/public/calendar/$token'
     | '/api/public/hooks/daily-notifications'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -380,6 +390,7 @@ export interface FileRouteTypes {
     | '/impostazioni/sicurezza'
     | '/ricette/nuova'
     | '/spesa/storico'
+    | '/api/public/calendar/$token'
     | '/api/public/hooks/daily-notifications'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -415,6 +426,7 @@ export interface FileRouteTypes {
     | '/_app/impostazioni/sicurezza'
     | '/_app/ricette/nuova'
     | '/_app/spesa/storico'
+    | '/api/public/calendar/$token'
     | '/api/public/hooks/daily-notifications'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -430,6 +442,7 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
   JoinCodeRoute: typeof JoinCodeRoute
+  ApiPublicCalendarTokenRoute: typeof ApiPublicCalendarTokenRoute
   ApiPublicHooksDailyNotificationsRoute: typeof ApiPublicHooksDailyNotificationsRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
   LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
@@ -669,6 +682,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksDailyNotificationsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/calendar/$token': {
+      id: '/api/public/calendar/$token'
+      path: '/api/public/calendar/$token'
+      fullPath: '/api/public/calendar/$token'
+      preLoaderRoute: typeof ApiPublicCalendarTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -779,6 +799,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
   JoinCodeRoute: JoinCodeRoute,
+  ApiPublicCalendarTokenRoute: ApiPublicCalendarTokenRoute,
   ApiPublicHooksDailyNotificationsRoute: ApiPublicHooksDailyNotificationsRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
   LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
