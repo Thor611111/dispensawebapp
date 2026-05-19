@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { ymd } from "@/lib/date";
 import { useMemo, useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/AppShell";
@@ -25,17 +26,17 @@ function startOfPeriod(p: PeriodKey): { from: string; days: number; label: strin
   if (p === "week") {
     const from = new Date(currentWeekStart());
     const prev = new Date(from); prev.setDate(prev.getDate() - 7);
-    return { from: from.toISOString().slice(0, 10), days: 7, label: "Questa settimana", prevFrom: prev.toISOString().slice(0, 10) };
+    return { from: ymd(from), days: 7, label: "Questa settimana", prevFrom: ymd(prev) };
   }
   if (p === "month") {
     const from = new Date(today.getFullYear(), today.getMonth(), 1);
     const prev = new Date(today.getFullYear(), today.getMonth() - 1, 1);
     const days = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-    return { from: from.toISOString().slice(0, 10), days, label: "Questo mese", prevFrom: prev.toISOString().slice(0, 10) };
+    return { from: ymd(from), days, label: "Questo mese", prevFrom: ymd(prev) };
   }
   const from = new Date(today.getFullYear(), today.getMonth() - 2, 1);
   const prev = new Date(today.getFullYear(), today.getMonth() - 5, 1);
-  return { from: from.toISOString().slice(0, 10), days: 90, label: "Ultimi 3 mesi", prevFrom: prev.toISOString().slice(0, 10) };
+  return { from: ymd(from), days: 90, label: "Ultimi 3 mesi", prevFrom: ymd(prev) };
 }
 
 const COLORS = ["var(--color-primary)", "var(--color-accent)", "var(--color-warning)", "var(--color-success)", "var(--color-danger)", "var(--color-muted-foreground)"];
@@ -88,7 +89,7 @@ function Statistiche() {
     const fromDate = new Date(ctx.from);
     for (let i = 0; i < ctx.days; i++) {
       const d = new Date(fromDate); d.setDate(d.getDate() + i);
-      const ds = d.toISOString().slice(0, 10);
+      const ds = ymd(d);
       if (d > today) {
         days.push({ date: ds.slice(5), cumulative: NaN, budget: budget > 0 ? budget * ((i + 1) / ctx.days) : 0 });
       } else {

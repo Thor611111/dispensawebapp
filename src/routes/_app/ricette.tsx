@@ -1,4 +1,5 @@
 import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
+import { ymd } from "@/lib/date";
 import { useState, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useHouseholdId, useFoodItems, usePreferences, useSavedRecipes, useRecipeFeedback, useUpcomingMeals } from "@/lib/queries";
@@ -36,13 +37,13 @@ function Ricette() {
   const [maxCost, setMaxCost] = useState("");
   const [difficulty, setDifficulty] = useState("");
   const [planFor, setPlanFor] = useState<{ title: string; recipe_id?: string | null; ingredients?: any[] } | null>(null);
-  const [planDate, setPlanDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
+  const [planDate, setPlanDate] = useState<string>(() => ymd(new Date()));
   const [planSlot, setPlanSlot] = useState<string>("dinner");
   const [planSaving, setPlanSaving] = useState(false);
 
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = ymd(new Date());
   const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
-  const tomorrowStr = tomorrow.toISOString().slice(0, 10);
+  const tomorrowStr = ymd(tomorrow);
   const { data: upcoming = [] } = useUpcomingMeals(hid, todayStr, tomorrowStr);
   const warningDays = Number(prefs?.expiry_warning_days ?? 3);
 
@@ -143,7 +144,7 @@ function Ricette() {
     const day = d.getDay();
     const diff = (day + 6) % 7;
     d.setDate(d.getDate() - diff);
-    const ws = d.toISOString().slice(0, 10);
+    const ws = ymd(d);
     const { data: existing } = await supabase.from("meal_plans").select("id").eq("household_id", hid!).eq("week_start", ws).maybeSingle();
     if (existing) return existing.id;
     const { data, error } = await supabase.from("meal_plans").insert({ household_id: hid!, week_start: ws }).select("id").single();

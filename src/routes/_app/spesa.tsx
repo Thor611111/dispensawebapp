@@ -1,4 +1,5 @@
 import { createFileRoute, useSearch } from "@tanstack/react-router";
+import { ymd } from "@/lib/date";
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useHouseholdId, useShoppingList, useExpenses, usePreferences, useFoodItems, useRecommendedProducts, usePantries, useCurrentMealPlan } from "@/lib/queries";
@@ -81,7 +82,7 @@ function Spesa() {
   const enrich = (row: any, info: any) => {
     if (!info) return row;
     const today = new Date();
-    const exp = info.shelf_life_days ? new Date(today.getTime() + info.shelf_life_days * 86400000).toISOString().slice(0, 10) : null;
+    const exp = info.shelf_life_days ? ymd(new Date(today.getTime() + info.shelf_life_days * 86400000)) : null;
     return {
       ...row,
       location: (info.location ?? row.location ?? "pantry"),
@@ -119,7 +120,7 @@ function Spesa() {
     if (!hid || !buyItem) return;
     const price = buyPrice ? Number(buyPrice) : 0;
     const qty = Number(buyQty) || 1;
-    const today = new Date().toISOString().slice(0, 10);
+    const today = ymd(new Date());
     const info = await classifyFoods([{ name: buyItem.name, unit: buyItem.unit ?? "pz" }]);
     const base = {
       household_id: hid, name: buyItem.name, quantity: qty, unit: buyItem.unit ?? "pz",
@@ -217,7 +218,7 @@ function Spesa() {
     const total = Number(totalAmount);
     if (!total || total <= 0) return toast.error("Inserisci l'importo totale");
     setClosing(true);
-    const today = new Date().toISOString().slice(0, 10);
+    const today = ymd(new Date());
     const info = await classifyFoods(checked.map((c) => ({ name: c.name, unit: c.unit ?? "pz" })));
     await supabase.from("food_items").insert(checked.map((c) => enrich({
       household_id: hid, name: c.name, quantity: c.quantity, unit: c.unit,
@@ -241,7 +242,7 @@ function Spesa() {
     const total = recTotalNum > 0 ? recTotalNum : purchasedSubtotal;
     if (total <= 0) return toast.error("Totale spesa non valido");
     setClosing(true);
-    const today = new Date().toISOString().slice(0, 10);
+    const today = ymd(new Date());
     const info = await classifyFoods(purchasedRows.map((r) => ({ name: r.name, unit: r.unit || "pz" })));
     const foodRows = purchasedRows.map((r) => enrich({
       household_id: hid,
@@ -295,7 +296,7 @@ function Spesa() {
     if (!hid) return;
     setPlanGenLoading(true);
     // Fetch all current+future entries across all plans of the household
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = ymd(new Date());
     const { data: plans } = await supabase.from("meal_plans").select("id").eq("household_id", hid);
     const planIds = (plans ?? []).map((p: any) => p.id);
     if (!planIds.length) {

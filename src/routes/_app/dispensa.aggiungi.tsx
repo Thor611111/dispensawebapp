@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
+import { ymd } from "@/lib/date";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { useHouseholdId, usePantries } from "@/lib/queries";
@@ -161,7 +162,7 @@ function Aggiungi() {
     setSaving(true);
     const today = new Date();
     const rows = keep.map((p) => {
-      const exp = p.shelf_life_days ? new Date(today.getTime() + p.shelf_life_days * 86400000).toISOString().slice(0, 10) : null;
+      const exp = p.shelf_life_days ? ymd(new Date(today.getTime() + p.shelf_life_days * 86400000)) : null;
       return {
         household_id: hid,
         name: p.name,
