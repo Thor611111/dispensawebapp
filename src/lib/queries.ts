@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { ensureHousehold } from "@/lib/household";
+import { weekStartYmd, parseYmd, ymd } from "@/lib/date";
 
 export function useHouseholdId() {
   const { user } = useAuth();
@@ -208,17 +209,12 @@ export function useUpcomingMeals(householdId: string | null | undefined, fromDat
 }
 
 export function currentWeekStart() {
-  const d = new Date();
-  const day = d.getDay(); // 0 sun
-  const diff = (day + 6) % 7; // monday-based
-  d.setDate(d.getDate() - diff);
-  return d.toISOString().slice(0, 10);
+  return weekStartYmd();
 }
 
 export function daysUntil(dateStr: string | null) {
   if (!dateStr) return null;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const d = new Date(dateStr);
+  const today = parseYmd(ymd());
+  const d = parseYmd(dateStr);
   return Math.round((d.getTime() - today.getTime()) / 86400000);
 }
