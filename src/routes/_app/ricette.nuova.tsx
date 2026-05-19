@@ -61,7 +61,18 @@ function Nuova() {
     if (error || !rec) { setSaving(false); return toast.error(error?.message ?? "Errore"); }
     const lines = ingredientsText.split("\n").map((l) => l.trim()).filter(Boolean);
     if (lines.length) {
-      await supabase.from("recipe_ingredients").insert(lines.map((l) => ({ recipe_id: rec.id, name: l })));
+      const parsed = lines.map((l) => {
+        // "200 g pasta" / "2 pz uova" / "pasta"
+        const m = l.match(/^([\d.,]+)\s*([a-zA-Zàèéìòù]+)?\s+(.+)$/);
+        if (m) {
+          const qty = Number(m[1].replace(",", "."));
+          const unit = m[2] ?? null;
+          const name = m[3].trim();
+          return { recipe_id: rec.id, name, quantity: Number.isFinite(qty) ? qty : null, unit };
+        }
+        return { recipe_id: rec.id, name: l, quantity: null, unit: null };
+      });
+      await supabase.from("recipe_ingredients").insert(parsed);
     }
     setSaving(false);
     qc.invalidateQueries({ queryKey: ["recipes", hid] });
