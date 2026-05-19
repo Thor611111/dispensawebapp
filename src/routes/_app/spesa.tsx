@@ -270,7 +270,6 @@ function Spesa() {
 
   const total = items.filter((i) => !i.checked).reduce((s, i) => s + Number(i.estimated_price ?? 0), 0);
   const checkedCount = items.filter((i) => i.checked).length;
-  void expenses; // (statistiche centralizza budget/forecast)
 
   const generateRecs = async () => {
     if (!hid) return;
