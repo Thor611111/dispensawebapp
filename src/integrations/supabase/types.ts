@@ -56,6 +56,45 @@ export type Database = {
         }
         Relationships: []
       }
+      calendar_tokens: {
+        Row: {
+          breakfast_time: string
+          created_at: string
+          default_meal_minutes: number
+          dinner_time: string
+          household_id: string
+          last_accessed_at: string | null
+          lunch_time: string
+          snack_time: string
+          token: string
+          user_id: string
+        }
+        Insert: {
+          breakfast_time?: string
+          created_at?: string
+          default_meal_minutes?: number
+          dinner_time?: string
+          household_id: string
+          last_accessed_at?: string | null
+          lunch_time?: string
+          snack_time?: string
+          token: string
+          user_id: string
+        }
+        Update: {
+          breakfast_time?: string
+          created_at?: string
+          default_meal_minutes?: number
+          dinner_time?: string
+          household_id?: string
+          last_accessed_at?: string | null
+          lunch_time?: string
+          snack_time?: string
+          token?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       email_send_log: {
         Row: {
           created_at: string
