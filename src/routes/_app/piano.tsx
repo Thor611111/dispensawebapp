@@ -4,8 +4,10 @@ import { useHouseholdId, useFoodItems, usePreferences, useSavedRecipes } from "@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Loader2, ChevronLeft, ChevronRight, ShoppingCart, Plus, Trash2, CalendarDays, CalendarRange, Calendar as CalendarIcon, Replace, RefreshCw, AlertCircle, CheckCircle2, Clock } from "lucide-react";
+import { Sparkles, Loader2, ChevronLeft, ChevronRight, ShoppingCart, Plus, Trash2, CalendarDays, CalendarRange, Calendar as CalendarIcon, Replace, RefreshCw, AlertCircle, CheckCircle2, Clock, CalendarPlus, Copy, RotateCw } from "lucide-react";
 import { useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { getCalendarToken, regenerateCalendarToken, updateCalendarPrefs } from "@/lib/calendar.functions";
 import { toast } from "sonner";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
@@ -240,6 +242,7 @@ function Piano() {
     <div>
       <PageHeader title="Piano pasti" subtitle={fullToday.charAt(0).toUpperCase() + fullToday.slice(1)} right={
         <div className="flex gap-2">
+          <CalendarSyncButton />
           <Button size="sm" variant="outline" onClick={addToShopping} disabled={shoppingLoading || entries.length === 0}>
             {shoppingLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShoppingCart className="h-4 w-4" />}
           </Button>
