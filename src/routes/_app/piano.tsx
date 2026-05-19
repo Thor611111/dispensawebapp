@@ -19,6 +19,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { getRecipeStatus } from "@/lib/recipe-status";
+import { ymd, parseYmd } from "@/lib/date";
 
 export const Route = createFileRoute("/_app/piano")({ component: Piano });
 
@@ -32,12 +33,6 @@ const SLOTS = [
 const MONTHS_IT = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"];
 const DAYS_IT = ["Lun","Mar","Mer","Gio","Ven","Sab","Dom"];
 
-function ymd(d: Date) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
 function startOfMonth(year: number, month: number) { return new Date(year, month, 1); }
 function endOfMonth(year: number, month: number) { return new Date(year, month + 1, 0); }
 
