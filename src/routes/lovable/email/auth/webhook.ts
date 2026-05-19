@@ -12,12 +12,12 @@ import { EmailChangeEmail } from '@/lib/email-templates/email-change'
 import { ReauthenticationEmail } from '@/lib/email-templates/reauthentication'
 
 const EMAIL_SUBJECTS: Record<string, string> = {
-  signup: 'Confirm your email',
-  invite: "You've been invited",
-  magiclink: 'Your login link',
-  recovery: 'Reset your password',
-  email_change: 'Confirm your new email',
-  reauthentication: 'Your verification code',
+  signup: 'Conferma la tua email · PantryAI',
+  invite: 'Sei stato invitato su PantryAI',
+  magiclink: 'Il tuo link di accesso · PantryAI',
+  recovery: 'Reimposta la tua password · PantryAI',
+  email_change: 'Conferma il cambio email · PantryAI',
+  reauthentication: 'Il tuo codice di verifica · PantryAI',
 }
 
 // Template mapping
@@ -31,7 +31,7 @@ const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
 }
 
 // Configuration
-const SITE_NAME = "dispensawebapp"
+const SITE_NAME = "PantryAI"
 const SENDER_DOMAIN = "notify.pantryai.it"
 const ROOT_DOMAIN = "pantryai.it"
 const FROM_DOMAIN = "pantryai.it"
