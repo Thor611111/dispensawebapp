@@ -1,32 +1,48 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { useProfile } from "@/lib/queries";
+import { useProfile, useHouseholdId, useMemberKind } from "@/lib/queries";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SettingsPageHeader } from "@/components/SettingsPage";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { BarChart3, ChevronRight } from "lucide-react";
 
 export const Route = createFileRoute("/_app/impostazioni/profilo")({ component: Page });
 
 function Page() {
   const { user } = useAuth();
   const { data: profile } = useProfile();
+  const { data: hid } = useHouseholdId();
+  const { data: kind } = useMemberKind(hid);
   const qc = useQueryClient();
   const [name, setName] = useState("");
+  const [memberKind, setMemberKind] = useState<"adult" | "child">("adult");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => { if (profile) setName(profile.display_name ?? ""); }, [profile]);
+  useEffect(() => { if (kind) setMemberKind(kind); }, [kind]);
 
   const save = async () => {
-    if (!user) return;
+    if (!user || !hid) return;
     setSaving(true);
     const { error } = await supabase.from("profiles").update({ display_name: name.trim() || null }).eq("id", user.id);
+    if (error) { setSaving(false); return toast.error(error.message); }
+    if (memberKind !== kind) {
+      const { error: e2 } = await supabase
+        .from("household_members")
+        .update({ member_kind: memberKind } as any)
+        .eq("household_id", hid)
+        .eq("user_id", user.id);
+      if (e2) { setSaving(false); return toast.error(e2.message); }
+      qc.invalidateQueries({ queryKey: ["memberKind", hid, user.id] });
+      qc.invalidateQueries({ queryKey: ["householdMembers", hid] });
+    }
     setSaving(false);
-    if (error) return toast.error(error.message);
     qc.invalidateQueries({ queryKey: ["profile", user.id] });
     toast.success("Profilo aggiornato");
   };
@@ -43,7 +59,27 @@ function Page() {
           <Label>Email</Label>
           <Input value={user?.email ?? ""} disabled />
         </div>
+        <div className="space-y-2">
+          <Label>Tipo utente</Label>
+          <Select value={memberKind} onValueChange={(v) => setMemberKind(v as "adult" | "child")}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="adult">Adulto — può modificare dispensa, spesa e piano</SelectItem>
+              <SelectItem value="child">Bambino — può solo visualizzare</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">Questa impostazione è visibile solo qui nel profilo.</p>
+        </div>
         <Button className="w-full" onClick={save} disabled={saving}>{saving ? "Salvataggio…" : "Salva"}</Button>
+
+        <Link to="/statistiche" className="mt-4 flex items-center gap-3 rounded-2xl border bg-card p-4 hover:bg-secondary/40 transition">
+          <BarChart3 className="h-5 w-5 text-primary" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium">Le tue statistiche</p>
+            <p className="truncate text-xs text-muted-foreground">Spese, sprechi, andamento settimanale</p>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </Link>
       </div>
     </div>
   );
