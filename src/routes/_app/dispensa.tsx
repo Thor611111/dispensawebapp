@@ -202,30 +202,28 @@ function Dispensa() {
                   <p className="text-xs text-muted-foreground">
                     {it.price ? `${Number(it.price).toFixed(2)} €` : ""}
                     {it.category ? ` · ${it.category}` : ""}
-                    {it.kcal_per_unit ? ` · ~${Math.round(Number(it.kcal_per_unit) * Number(it.quantity))} kcal` : ""}
                   </p>
                   <div className="mt-1.5">
                     <QuantityStepper value={Number(it.quantity ?? 0)} unit={it.unit} onChange={(n) => updateQty(it.id, n)} />
                   </div>
                 </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button size="icon" variant="ghost" className="h-8 w-8" title="Azioni">
-                      {recalcId === it.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreVertical className="h-4 w-4 text-muted-foreground" />}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => setStornoItem(it)}>
-                      <RotateCcw className="h-4 w-4" /> Storna acquisto
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => recalcKcal(it)} disabled={recalcId === it.id}>
-                      <Flame className="h-4 w-4 text-warning" /> Ricalcola kcal
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => remove(it.id)} className="text-danger focus:text-danger">
-                      <Trash2 className="h-4 w-4" /> Elimina
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                {!isChild && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button size="icon" variant="ghost" className="h-8 w-8" title="Azioni">
+                        <MoreVertical className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => setStornoItem(it)}>
+                        <RotateCcw className="h-4 w-4" /> Storna acquisto
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => remove(it.id)} className="text-danger focus:text-danger">
+                        <Trash2 className="h-4 w-4" /> Elimina
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
               </li>
             );
           })}
