@@ -2,11 +2,10 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ymd } from "@/lib/date";
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/AppShell";
-import { useHouseholdId, useFoodItems, usePreferences, useExpenses, useProfile, useIsAdmin, currentWeekStart, daysUntil } from "@/lib/queries";
+import { useHouseholdId, useFoodItems, usePreferences, useProfile, useIsAdmin, useMemberKind, daysUntil } from "@/lib/queries";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Sparkles, Loader2, Clock, Wallet, AlertTriangle, ShieldCheck, Plus, Camera } from "lucide-react";
-import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { InstallAppCard } from "@/components/InstallAppCard";
 import { useQueryClient } from "@tanstack/react-query";
@@ -19,19 +18,15 @@ function Home() {
   const { data: hid } = useHouseholdId();
   const { data: items = [] } = useFoodItems(hid);
   const { data: prefs } = usePreferences(hid);
-  const { data: expenses = [] } = useExpenses(hid);
   const { data: profile } = useProfile();
   const { data: isAdmin } = useIsAdmin();
+  const { data: kind } = useMemberKind(hid);
+  const isChild = kind === "child";
   useQueryClient();
   const [quick, setQuick] = useState<R[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const weekStart = currentWeekStart();
   const today = new Date();
-  const weekSpent = expenses.filter((e) => e.spent_on >= weekStart).reduce((s, e) => s + Number(e.amount), 0);
-  const budget = prefs?.weekly_budget ? Number(prefs.weekly_budget) : 0;
-  const remaining = budget - weekSpent;
-  const pct = budget > 0 ? Math.min(100, (weekSpent / budget) * 100) : 0;
   const warnDays = (prefs as any)?.expiry_warning_days ?? 3;
   const expiring = items.filter((i) => { const d = daysUntil(i.expires_on); return d !== null && d <= warnDays; }).length;
 
@@ -67,21 +62,16 @@ function Home() {
 
       <InstallAppCard variant="banner" dismissible />
 
-      <Link to="/statistiche" className="mb-4 block rounded-2xl border bg-card p-5 transition-colors hover:bg-secondary/40">
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Budget settimanale</p>
-            <p className={`mt-1 text-3xl font-bold ${budget > 0 && remaining < 0 ? "text-danger" : ""}`}>
-              {budget > 0 ? `${remaining.toFixed(2)} €` : "—"}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {budget > 0 ? `Speso ${weekSpent.toFixed(2)} di ${budget.toFixed(2)} €` : "Tocca per impostare un budget"}
-            </p>
-          </div>
-          <Wallet className="h-10 w-10 text-primary" />
-        </div>
-        {budget > 0 && <Progress value={pct} className="mt-3" />}
-      </Link>
+      {/* Flusso guidato: 4 step rapidi */}
+      <div className="mb-4 rounded-2xl border bg-gradient-to-br from-primary/10 to-primary/5 p-4">
+        <p className="mb-3 text-xs uppercase tracking-wide text-muted-foreground">Cosa fare ora</p>
+        <ol className="space-y-1.5 text-sm">
+          <li className="flex items-center gap-2"><span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/20 text-[10px] font-bold text-primary">1</span> Aggiungi alimenti</li>
+          <li className="flex items-center gap-2"><span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/20 text-[10px] font-bold text-primary">2</span> Vedi ricette suggerite</li>
+          <li className="flex items-center gap-2"><span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/20 text-[10px] font-bold text-primary">3</span> Scegli cosa cucinare</li>
+          <li className="flex items-center gap-2"><span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/20 text-[10px] font-bold text-primary">4</span> Aggiungi al piano pasti</li>
+        </ol>
+      </div>
 
       <Link to="/dispensa" search={{ filter: "expiring" }} className="mb-4 block rounded-2xl border bg-card p-4 transition-colors hover:bg-secondary/40">
         <div className="flex items-center justify-between gap-3">
@@ -93,14 +83,16 @@ function Home() {
         </div>
       </Link>
 
-      <div className="mb-5 grid grid-cols-2 gap-2">
-        <Button asChild variant="outline" className="h-auto justify-start gap-2 py-3">
-          <Link to="/dispensa/aggiungi"><Plus className="h-4 w-4" /> Aggiungi alimento</Link>
-        </Button>
-        <Button asChild variant="outline" className="h-auto justify-start gap-2 py-3">
-          <Link to="/spesa" search={{ scan: 1 }}><Camera className="h-4 w-4" /> Scansiona scontrino</Link>
-        </Button>
-      </div>
+      {!isChild && (
+        <div className="mb-5 grid grid-cols-2 gap-2">
+          <Button asChild variant="outline" className="h-auto justify-start gap-2 py-3">
+            <Link to="/dispensa/aggiungi"><Plus className="h-4 w-4" /> Aggiungi alimento</Link>
+          </Button>
+          <Button asChild variant="outline" className="h-auto justify-start gap-2 py-3">
+            <Link to="/spesa" search={{ scan: 1 }}><Camera className="h-4 w-4" /> Scansiona scontrino</Link>
+          </Button>
+        </div>
+      )}
 
       <div className="mb-2 flex items-center justify-between">
         <h2 className="text-sm font-semibold">Ricette rapide per te</h2>

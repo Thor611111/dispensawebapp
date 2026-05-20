@@ -11,13 +11,53 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sparkles, Loader2, Check, X, Flame, Barcode, CameraOff } from "lucide-react";
+import { Sparkles, Loader2, Check, X, Barcode, CameraOff, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { BrowserMultiFormatReader } from "@zxing/browser";
 
 export const Route = createFileRoute("/_app/dispensa/aggiungi")({ component: Aggiungi });
 
-type Parsed = { name: string; quantity: number; unit: string; category?: string; location: string; price?: number; shelf_life_days?: number; kcal_per_unit?: number; _keep?: boolean };
+type Parsed = { name: string; quantity: number; unit: string; category?: string; location: string; price?: number; shelf_life_days?: number; _keep?: boolean };
+
+const UNIT_OPTIONS = [
+  { v: "pz", l: "pezzi" },
+  { v: "confezione", l: "confezione" },
+  { v: "g", l: "grammi (g)" },
+  { v: "kg", l: "chilogrammi (kg)" },
+  { v: "ml", l: "millilitri (ml)" },
+  { v: "l", l: "litri (l)" },
+] as const;
+
+// Stima rapida giorni di scadenza in base a categoria/nome
+function guessShelfLifeDays(name: string, category?: string | null): number | null {
+  const text = `${name} ${category ?? ""}`.toLowerCase();
+  const rules: { match: RegExp; days: number }[] = [
+    { match: /\b(latte fresco|panna fresca)\b/, days: 5 },
+    { match: /\b(yogurt|ricotta|mozzarella|stracchino|burrata)\b/, days: 7 },
+    { match: /\b(carne|pollo|tacchino|macinato|salsiccia)\b/, days: 2 },
+    { match: /\b(pesce|tonno fresco|salmone|gambero)\b/, days: 1 },
+    { match: /\b(uov[ao])\b/, days: 21 },
+    { match: /\b(insalata|spinaci|rucola|lattuga|valeriana)\b/, days: 4 },
+    { match: /\b(frutt|mel[ae]|banan|pera|pesca|albicocca|kiwi)\b/, days: 7 },
+    { match: /\b(verdur|pomodor|zucchin|melanzan|peperon|carot)\b/, days: 7 },
+    { match: /\b(pane fresco|focaccia)\b/, days: 3 },
+    { match: /\b(formagg|parmigian|grana|pecorin)\b/, days: 30 },
+    { match: /\b(latte uht|latte a lunga|panna uht)\b/, days: 90 },
+    { match: /\b(pasta|riso|farina|zucchero|sale|legumi|fagiol|lenticc|cec|orz|farro)\b/, days: 365 },
+    { match: /\b(scatoletta|conserv|passata|pelati|tonno in scatola|tonno sott)\b/, days: 540 },
+    { match: /\b(surgelat|congel)\b/, days: 180 },
+    { match: /\b(biscott|merendin|crackers|grissin)\b/, days: 120 },
+  ];
+  for (const r of rules) if (r.match.test(text)) return r.days;
+  if (/(fresco|fresca)/.test(text)) return 5;
+  return null;
+}
+
+function daysFromToday(days: number) {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return ymd(d);
+}
 
 function Aggiungi() {
   const { data: hid, isLoading: loadingHousehold } = useHouseholdId();
@@ -33,8 +73,7 @@ function Aggiungi() {
   const [pantryId, setPantryId] = useState<string>("");
   const [expires, setExpires] = useState("");
   const [price, setPrice] = useState("");
-  const [kcal, setKcal] = useState("");
-  const [calcLoading, setCalcLoading] = useState(false);
+  const [category, setCategory] = useState("");
   const [text, setText] = useState("");
   const [parsing, setParsing] = useState(false);
   const [parsed, setParsed] = useState<Parsed[]>([]);
@@ -88,21 +127,34 @@ function Aggiungi() {
         const p = json.product;
         const productName = p.product_name_it || p.product_name || `Prodotto ${code}`;
         setName(productName);
-        // Open Food Facts dà kcal per 100g/100ml. Normalizziamo a kcal per 1 unità (g o ml)
-        // e impostiamo unit di conseguenza.
-        const per100 = p.nutriments?.["energy-kcal_100g"];
-        const serving = p.nutriments?.["energy-kcal_serving"];
-        if (per100) {
-          const isLiquid = (p.quantity ?? "").toString().toLowerCase().match(/\b(ml|l|cl)\b/);
-          setUnit(isLiquid ? "ml" : "g");
-          setKcal((Number(per100) / 100).toFixed(2));
-        } else if (serving) {
+        // Categoria
+        const catRaw: string =
+          (p.categories_tags?.[0] as string)?.replace(/^[a-z]{2}:/, "")?.replace(/-/g, " ") ||
+          (p.categories?.split(",")[0] ?? "").trim();
+        if (catRaw) setCategory(catRaw);
+        // Quantità standard dalla confezione
+        const qStr = (p.quantity ?? "").toString().toLowerCase();
+        const m = qStr.match(/([\d.,]+)\s*(kg|g|l|ml|cl)/);
+        if (m) {
+          const num = parseFloat(m[1].replace(",", "."));
+          const u = m[2];
+          if (u === "kg") { setQty(String(num)); setUnit("kg"); }
+          else if (u === "g") { setQty(String(num)); setUnit("g"); }
+          else if (u === "l") { setQty(String(num)); setUnit("l"); }
+          else if (u === "ml") { setQty(String(num)); setUnit("ml"); }
+          else if (u === "cl") { setQty(String(num * 10)); setUnit("ml"); }
+        } else {
+          setQty("1");
           setUnit("pz");
-          setKcal(String(Math.round(serving)));
         }
-        toast.success(`Trovato: ${productName}`);
+        // Scadenza suggerita
+        const days = guessShelfLifeDays(productName, catRaw);
+        if (days) setExpires(daysFromToday(days));
+        toast.success(`Trovato: ${productName}${days ? ` · scadenza suggerita ~${days}g` : ""}`);
+        setTab("manual");
       } else {
         toast.message(`Codice ${code}: prodotto non trovato. Compila a mano.`);
+        setTab("manual");
       }
     } catch {
       toast.error("Errore lookup prodotto");
@@ -126,7 +178,7 @@ function Aggiungi() {
       location: location as never,
       expires_on: expires || null,
       price: price ? Number(price) : null,
-      kcal_per_unit: kcal ? Number(kcal) : null,
+      category: category.trim() || null,
       pantry_id: effectivePantry,
     });
     setSaving(false);
@@ -136,13 +188,12 @@ function Aggiungi() {
     navigate({ to: "/dispensa" });
   };
 
-  const calcKcal = async () => {
+  const suggestExpiry = () => {
     if (!name.trim()) return toast.error("Inserisci prima il nome");
-    setCalcLoading(true);
-    const { data, error } = await supabase.functions.invoke("ai-calc-kcal", { body: { name, quantity: 1, unit } });
-    setCalcLoading(false);
-    if (error || data?.error) return toast.error(error?.message ?? data?.error);
-    if (data?.kcal) setKcal(String(data.kcal));
+    const days = guessShelfLifeDays(name, category);
+    if (!days) return toast.message("Nessuna stima disponibile per questo alimento.");
+    setExpires(daysFromToday(days));
+    toast.success(`Scadenza suggerita: ~${days} giorni`);
   };
 
   const parseAi = async () => {
@@ -171,7 +222,6 @@ function Aggiungi() {
         location: (p.location ?? "pantry") as never,
         category: p.category ?? null,
         price: p.price ?? null,
-        kcal_per_unit: p.kcal_per_unit ?? null,
         pantry_id: effectivePantry,
         expires_on: exp,
       };
@@ -207,8 +257,17 @@ function Aggiungi() {
               </div>
               <div className="space-y-1.5">
                 <Label>Unità</Label>
-                <Input value={unit} onChange={(e) => setUnit(e.target.value)} />
+                <Select value={unit} onValueChange={setUnit}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {UNIT_OPTIONS.map((u) => <SelectItem key={u.v} value={u.v}>{u.l}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Categoria <span className="text-xs text-muted-foreground">(facoltativa)</span></Label>
+              <Input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="es. Latticini, Verdura…" />
             </div>
             <div className="space-y-1.5">
               <Label>Posizione</Label>
@@ -233,31 +292,25 @@ function Aggiungi() {
                 </Select>
               </div>
             )}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Scadenza</Label>
+            <div className="space-y-1.5">
+              <Label>Scadenza</Label>
+              <div className="flex gap-2">
                 <Input type="date" value={expires} onChange={(e) => setExpires(e.target.value)} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Prezzo (€)</Label>
-                <Input type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} />
+                <Button type="button" variant="outline" onClick={suggestExpiry} disabled={!name.trim()} title="Suggerisci scadenza">
+                  <Wand2 className="h-4 w-4" /> Suggerisci
+                </Button>
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label>Kcal per unità</Label>
-              <div className="flex gap-2">
-                <Input type="number" step="1" value={kcal} onChange={(e) => setKcal(e.target.value)} placeholder="es. 89" />
-                <Button type="button" variant="outline" onClick={calcKcal} disabled={calcLoading || !name.trim()}>
-                  {calcLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Flame className="h-4 w-4" />} AI
-                </Button>
-              </div>
+              <Label>Prezzo (€) <span className="text-xs text-muted-foreground">(facoltativo)</span></Label>
+              <Input type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} />
             </div>
             <Button type="submit" className="w-full" disabled={saving || loadingHousehold}>{saving ? "Salvataggio…" : "Aggiungi"}</Button>
           </form>
         </TabsContent>
 
         <TabsContent value="barcode" className="space-y-3">
-          <p className="text-sm text-muted-foreground">Inquadra il codice a barre. Recupero dati da Open Food Facts.</p>
+          <p className="text-sm text-muted-foreground">Inquadra il codice. Compilo nome, categoria, quantità e scadenza per te.</p>
           <div className="overflow-hidden rounded-xl border bg-black aspect-video relative">
             <video ref={videoRef} className="h-full w-full object-cover" muted playsInline />
             {!scanning && (
@@ -270,12 +323,6 @@ function Aggiungi() {
             {scanning && <Button variant="outline" className="flex-1" onClick={stopScan}><CameraOff className="h-4 w-4" /> Ferma</Button>}
             {lookup && <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Cerco prodotto…</div>}
           </div>
-          {name && (
-            <div className="rounded-xl border bg-card p-3 text-sm">
-              <p className="font-medium">{name}</p>
-              <p className="text-xs text-muted-foreground">Vai alla tab "Manuale" per completare e salvare.</p>
-            </div>
-          )}
         </TabsContent>
 
         <TabsContent value="ai" className="space-y-3">

@@ -2,13 +2,13 @@ import { createFileRoute, Link, Outlet, useLocation, useSearch } from "@tanstack
 import { ymd } from "@/lib/date";
 import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useHouseholdId, useFoodItems, usePantries, usePreferences, daysUntil } from "@/lib/queries";
+import { useHouseholdId, useFoodItems, usePantries, usePreferences, useMemberKind, daysUntil } from "@/lib/queries";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Trash2, Refrigerator, Snowflake, Package2, Box, Trash, AlertTriangle, RotateCcw, Flame, Loader2, MoreVertical } from "lucide-react";
+import { Plus, Trash2, Refrigerator, Snowflake, Package2, Box, Trash, AlertTriangle, RotateCcw, MoreVertical } from "lucide-react";
 import { toast } from "sonner";
 import { QuantityStepper } from "@/components/QuantityStepper";
 import {
@@ -36,6 +36,8 @@ function Dispensa() {
   const { data: items = [], isLoading } = useFoodItems(hid);
   const { data: pantries = [] } = usePantries(hid);
   const { data: prefs } = usePreferences(hid);
+  const { data: kind } = useMemberKind(hid);
+  const isChild = kind === "child";
   const qc = useQueryClient();
   const [filter, setFilter] = useState<string>("all");
   const [activePantry, setActivePantry] = useState<string>("all");
@@ -44,11 +46,22 @@ function Dispensa() {
   const [openPantryDialog, setOpenPantryDialog] = useState(false);
   const search = useSearch({ from: "/_app/dispensa" });
   const [stornoItem, setStornoItem] = useState<any>(null);
-  const [recalcId, setRecalcId] = useState<string | null>(null);
 
   useEffect(() => {
     if (search.filter === "expiring") setExpiringOnly(true);
   }, [search.filter]);
+
+  // Realtime: sincronizza la dispensa tra membri del nucleo
+  useEffect(() => {
+    if (!hid) return;
+    const ch = supabase
+      .channel(`food-${hid}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "food_items", filter: `household_id=eq.${hid}` }, () => {
+        qc.invalidateQueries({ queryKey: ["food", hid] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [hid, qc]);
 
   if (location.pathname !== "/dispensa") return <Outlet />;
 
@@ -88,18 +101,6 @@ function Dispensa() {
     toast.success(amt > 0 ? `Stornato ${amt.toFixed(2)} \u20ac` : "Alimento rimosso");
   };
 
-  const recalcKcal = async (it: any) => {
-    setRecalcId(it.id);
-    const { data, error } = await supabase.functions.invoke("ai-calc-kcal", { body: { name: it.name, quantity: 1, unit: it.unit ?? "pz" } });
-    setRecalcId(null);
-    if (error || data?.error) return toast.error(error?.message ?? data?.error ?? "Errore AI");
-    const k = Number(data?.kcal);
-    if (!Number.isFinite(k)) return toast.error("Stima non disponibile");
-    const { error: e2 } = await supabase.from("food_items").update({ kcal_per_unit: k }).eq("id", it.id);
-    if (e2) return toast.error(e2.message);
-    qc.invalidateQueries({ queryKey: ["food", hid] });
-    toast.success(`Aggiornato: ${k} kcal/${it.unit ?? "pz"}`);
-  };
 
   const empty = async () => {
     if (!hid) return;
@@ -127,9 +128,11 @@ function Dispensa() {
         title="Dispensa"
         subtitle={filtered.length > 0 ? `${filtered.length} ${filtered.length === 1 ? "alimento" : "alimenti"}` : "Cosa hai in casa, sempre aggiornato."}
         right={
-          <Button asChild size="sm">
-            <Link to="/dispensa/aggiungi"><Plus className="h-4 w-4" /> Aggiungi</Link>
-          </Button>
+          isChild ? null : (
+            <Button asChild size="sm">
+              <Link to="/dispensa/aggiungi"><Plus className="h-4 w-4" /> Aggiungi</Link>
+            </Button>
+          )
         }
       />
 
@@ -199,30 +202,28 @@ function Dispensa() {
                   <p className="text-xs text-muted-foreground">
                     {it.price ? `${Number(it.price).toFixed(2)} €` : ""}
                     {it.category ? ` · ${it.category}` : ""}
-                    {it.kcal_per_unit ? ` · ~${Math.round(Number(it.kcal_per_unit) * Number(it.quantity))} kcal` : ""}
                   </p>
                   <div className="mt-1.5">
                     <QuantityStepper value={Number(it.quantity ?? 0)} unit={it.unit} onChange={(n) => updateQty(it.id, n)} />
                   </div>
                 </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button size="icon" variant="ghost" className="h-8 w-8" title="Azioni">
-                      {recalcId === it.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreVertical className="h-4 w-4 text-muted-foreground" />}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => setStornoItem(it)}>
-                      <RotateCcw className="h-4 w-4" /> Storna acquisto
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => recalcKcal(it)} disabled={recalcId === it.id}>
-                      <Flame className="h-4 w-4 text-warning" /> Ricalcola kcal
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => remove(it.id)} className="text-danger focus:text-danger">
-                      <Trash2 className="h-4 w-4" /> Elimina
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                {!isChild && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button size="icon" variant="ghost" className="h-8 w-8" title="Azioni">
+                        <MoreVertical className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => setStornoItem(it)}>
+                        <RotateCcw className="h-4 w-4" /> Storna acquisto
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => remove(it.id)} className="text-danger focus:text-danger">
+                        <Trash2 className="h-4 w-4" /> Elimina
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
               </li>
             );
           })}

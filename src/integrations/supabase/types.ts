@@ -324,18 +324,21 @@ export type Database = {
         Row: {
           household_id: string
           joined_at: string
+          member_kind: Database["public"]["Enums"]["member_kind"]
           role: Database["public"]["Enums"]["member_role"]
           user_id: string
         }
         Insert: {
           household_id: string
           joined_at?: string
+          member_kind?: Database["public"]["Enums"]["member_kind"]
           role?: Database["public"]["Enums"]["member_role"]
           user_id: string
         }
         Update: {
           household_id?: string
           joined_at?: string
+          member_kind?: Database["public"]["Enums"]["member_kind"]
           role?: Database["public"]["Enums"]["member_role"]
           user_id?: string
         }
@@ -686,6 +689,30 @@ export type Database = {
           },
         ]
       }
+      recipe_views: {
+        Row: {
+          id: string
+          recipe_id: string | null
+          recipe_title: string | null
+          user_id: string
+          viewed_at: string
+        }
+        Insert: {
+          id?: string
+          recipe_id?: string | null
+          recipe_title?: string | null
+          user_id: string
+          viewed_at?: string
+        }
+        Update: {
+          id?: string
+          recipe_id?: string | null
+          recipe_title?: string | null
+          user_id?: string
+          viewed_at?: string
+        }
+        Relationships: []
+      }
       recipes: {
         Row: {
           created_at: string
@@ -985,6 +1012,10 @@ export type Database = {
       }
       is_current_user_admin: { Args: never; Returns: boolean }
       is_current_user_owner: { Args: never; Returns: boolean }
+      is_household_adult: {
+        Args: { _household_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_household_member: {
         Args: { _household_id: string; _user_id: string }
         Returns: boolean
@@ -1029,6 +1060,7 @@ export type Database = {
       feedback_type: "liked" | "disliked" | "never"
       food_location: "fridge" | "freezer" | "pantry" | "other"
       meal_slot: "breakfast" | "lunch" | "dinner" | "snack"
+      member_kind: "adult" | "child"
       member_role: "owner" | "member"
     }
     CompositeTypes: {
@@ -1171,6 +1203,7 @@ export const Constants = {
       feedback_type: ["liked", "disliked", "never"],
       food_location: ["fridge", "freezer", "pantry", "other"],
       meal_slot: ["breakfast", "lunch", "dinner", "snack"],
+      member_kind: ["adult", "child"],
       member_role: ["owner", "member"],
     },
   },

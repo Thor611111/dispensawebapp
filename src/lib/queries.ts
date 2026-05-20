@@ -13,6 +13,44 @@ export function useHouseholdId() {
   });
 }
 
+export function useMemberKind(householdId: string | null | undefined) {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["memberKind", householdId, user?.id],
+    enabled: !!householdId && !!user,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("household_members")
+        .select("member_kind")
+        .eq("household_id", householdId!)
+        .eq("user_id", user!.id)
+        .maybeSingle();
+      return ((data as any)?.member_kind ?? "adult") as "adult" | "child";
+    },
+  });
+}
+
+export function useHouseholdMembers(householdId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["householdMembers", householdId],
+    enabled: !!householdId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("household_members")
+        .select("*")
+        .eq("household_id", householdId!);
+      if (!data?.length) return [];
+      const ids = data.map((m: any) => m.user_id);
+      const { data: profs } = await supabase
+        .from("profiles").select("id,display_name").in("id", ids);
+      return data.map((m: any) => ({
+        ...m,
+        display_name: profs?.find((p) => p.id === m.user_id)?.display_name,
+      }));
+    },
+  });
+}
+
 export function useProfile() {
   const { user } = useAuth();
   return useQuery({
