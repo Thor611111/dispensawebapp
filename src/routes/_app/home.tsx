@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/AppShell";
 import { useHouseholdId, useFoodItems, usePreferences, useProfile, useIsAdmin, useMemberKind, daysUntil } from "@/lib/queries";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Loader2, Clock, Wallet, AlertTriangle, ShieldCheck, Plus, Camera, ChefHat } from "lucide-react";
+import { Sparkles, Loader2, Clock, Wallet, AlertTriangle, ShieldCheck, Plus, Camera } from "lucide-react";
 import { toast } from "sonner";
 import { InstallAppCard } from "@/components/InstallAppCard";
 import { useQueryClient } from "@tanstack/react-query";
