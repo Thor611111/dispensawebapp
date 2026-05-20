@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Trash2, Refrigerator, Snowflake, Package2, Box, Trash, AlertTriangle, RotateCcw, Flame, Loader2, MoreVertical } from "lucide-react";
+import { Plus, Trash2, Refrigerator, Snowflake, Package2, Box, Trash, AlertTriangle, RotateCcw, MoreVertical } from "lucide-react";
 import { toast } from "sonner";
 import { QuantityStepper } from "@/components/QuantityStepper";
 import {
@@ -46,7 +46,6 @@ function Dispensa() {
   const [openPantryDialog, setOpenPantryDialog] = useState(false);
   const search = useSearch({ from: "/_app/dispensa" });
   const [stornoItem, setStornoItem] = useState<any>(null);
-  const [recalcId, setRecalcId] = useState<string | null>(null);
 
   useEffect(() => {
     if (search.filter === "expiring") setExpiringOnly(true);
@@ -102,18 +101,6 @@ function Dispensa() {
     toast.success(amt > 0 ? `Stornato ${amt.toFixed(2)} \u20ac` : "Alimento rimosso");
   };
 
-  const recalcKcal = async (it: any) => {
-    setRecalcId(it.id);
-    const { data, error } = await supabase.functions.invoke("ai-calc-kcal", { body: { name: it.name, quantity: 1, unit: it.unit ?? "pz" } });
-    setRecalcId(null);
-    if (error || data?.error) return toast.error(error?.message ?? data?.error ?? "Errore AI");
-    const k = Number(data?.kcal);
-    if (!Number.isFinite(k)) return toast.error("Stima non disponibile");
-    const { error: e2 } = await supabase.from("food_items").update({ kcal_per_unit: k }).eq("id", it.id);
-    if (e2) return toast.error(e2.message);
-    qc.invalidateQueries({ queryKey: ["food", hid] });
-    toast.success(`Aggiornato: ${k} kcal/${it.unit ?? "pz"}`);
-  };
 
   const empty = async () => {
     if (!hid) return;
