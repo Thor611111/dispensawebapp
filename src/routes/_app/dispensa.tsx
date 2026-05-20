@@ -2,7 +2,7 @@ import { createFileRoute, Link, Outlet, useLocation, useSearch } from "@tanstack
 import { ymd } from "@/lib/date";
 import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useHouseholdId, useFoodItems, usePantries, usePreferences, daysUntil } from "@/lib/queries";
+import { useHouseholdId, useFoodItems, usePantries, usePreferences, useMemberKind, daysUntil } from "@/lib/queries";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,8 @@ function Dispensa() {
   const { data: items = [], isLoading } = useFoodItems(hid);
   const { data: pantries = [] } = usePantries(hid);
   const { data: prefs } = usePreferences(hid);
+  const { data: kind } = useMemberKind(hid);
+  const isChild = kind === "child";
   const qc = useQueryClient();
   const [filter, setFilter] = useState<string>("all");
   const [activePantry, setActivePantry] = useState<string>("all");
@@ -49,6 +51,18 @@ function Dispensa() {
   useEffect(() => {
     if (search.filter === "expiring") setExpiringOnly(true);
   }, [search.filter]);
+
+  // Realtime: sincronizza la dispensa tra membri del nucleo
+  useEffect(() => {
+    if (!hid) return;
+    const ch = supabase
+      .channel(`food-${hid}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "food_items", filter: `household_id=eq.${hid}` }, () => {
+        qc.invalidateQueries({ queryKey: ["food", hid] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [hid, qc]);
 
   if (location.pathname !== "/dispensa") return <Outlet />;
 
@@ -127,9 +141,11 @@ function Dispensa() {
         title="Dispensa"
         subtitle={filtered.length > 0 ? `${filtered.length} ${filtered.length === 1 ? "alimento" : "alimenti"}` : "Cosa hai in casa, sempre aggiornato."}
         right={
-          <Button asChild size="sm">
-            <Link to="/dispensa/aggiungi"><Plus className="h-4 w-4" /> Aggiungi</Link>
-          </Button>
+          isChild ? null : (
+            <Button asChild size="sm">
+              <Link to="/dispensa/aggiungi"><Plus className="h-4 w-4" /> Aggiungi</Link>
+            </Button>
+          )
         }
       />
 
