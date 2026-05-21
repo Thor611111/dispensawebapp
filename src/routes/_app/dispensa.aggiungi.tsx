@@ -116,10 +116,7 @@ function Aggiungi() {
           setQty("1");
           setUnit("pz");
         }
-        // Scadenza suggerita
-        const days = guessShelfLifeDays(productName, catRaw);
-        if (days) setExpires(daysFromToday(days));
-        toast.success(`Trovato: ${productName}${days ? ` · scadenza suggerita ~${days}g` : ""}`);
+        toast.success(`Trovato: ${productName}`);
         setTab("manual");
       } else {
         toast.message(`Codice ${code}: prodotto non trovato. Compila a mano.`);
@@ -155,14 +152,6 @@ function Aggiungi() {
     await queryClient.invalidateQueries({ queryKey: ["food", hid] });
     toast.success("Aggiunto");
     navigate({ to: "/dispensa" });
-  };
-
-  const suggestExpiry = () => {
-    if (!name.trim()) return toast.error("Inserisci prima il nome");
-    const days = guessShelfLifeDays(name, category);
-    if (!days) return toast.message("Nessuna stima disponibile per questo alimento.");
-    setExpires(daysFromToday(days));
-    toast.success(`Scadenza suggerita: ~${days} giorni`);
   };
 
   const parseAi = async () => {
@@ -263,12 +252,7 @@ function Aggiungi() {
             )}
             <div className="space-y-1.5">
               <Label>Scadenza</Label>
-              <div className="flex gap-2">
-                <Input type="date" value={expires} onChange={(e) => setExpires(e.target.value)} />
-                <Button type="button" variant="outline" onClick={suggestExpiry} disabled={!name.trim()} title="Suggerisci scadenza">
-                  <Wand2 className="h-4 w-4" /> Suggerisci
-                </Button>
-              </div>
+              <Input type="date" value={expires} onChange={(e) => setExpires(e.target.value)} />
             </div>
             <div className="space-y-1.5">
               <Label>Prezzo (€) <span className="text-xs text-muted-foreground">(facoltativo)</span></Label>
