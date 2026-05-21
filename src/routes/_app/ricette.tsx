@@ -2,7 +2,7 @@ import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-rout
 import { ymd } from "@/lib/date";
 import { useState, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useHouseholdId, useFoodItems, usePreferences, useSavedRecipes, useRecipeFeedback, useUpcomingMeals } from "@/lib/queries";
+import { useHouseholdId, useFoodItems, usePreferences, useSavedRecipes, useRecipeFeedback, useUpcomingMeals, useRecipeViews } from "@/lib/queries";
 import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/AppShell";
@@ -28,6 +28,7 @@ function Ricette() {
   const { data: prefs } = usePreferences(hid);
   const { data: saved = [] } = useSavedRecipes(hid);
   const { data: feedback = [] } = useRecipeFeedback();
+  const { data: views = [] } = useRecipeViews();
   const { user } = useAuth();
   const qc = useQueryClient();
   const [loading, setLoading] = useState(false);
@@ -51,7 +52,24 @@ function Ricette() {
 
   const likes = feedback.filter((f) => f.feedback === "liked").map((f) => f.recipe_title).filter(Boolean) as string[];
   const dislikes = feedback.filter((f) => f.feedback === "disliked").map((f) => f.recipe_title).filter(Boolean) as string[];
+  // Titoli visti di recente: segnale di interesse per l'AI
+  const viewedTitles = Array.from(new Set((views as any[]).map((v) => v.recipe_title).filter(Boolean))).slice(0, 20) as string[];
+  // Ingredienti più frequenti nelle ricette salvate + viste (top 10)
+  const frequentIngredients = (() => {
+    const counts: Record<string, number> = {};
+    for (const r of saved as any[]) for (const ing of (r.recipe_ingredients ?? [])) {
+      const k = (ing.name ?? "").toLowerCase().trim();
+      if (k) counts[k] = (counts[k] ?? 0) + 1;
+    }
+    return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([k]) => k);
+  })();
   const myFeedback = (title: string) => feedback.find((f) => f.recipe_title === title && f.user_id === user?.id)?.feedback;
+
+  const trackView = async (title: string, recipe_id?: string | null) => {
+    if (!user || !title) return;
+    await supabase.from("recipe_views").insert({ user_id: user.id, recipe_title: title, recipe_id: recipe_id ?? null });
+    qc.invalidateQueries({ queryKey: ["recipe-views", user.id] });
+  };
 
   const generate = async () => {
     setLoading(true);
@@ -59,7 +77,7 @@ function Ricette() {
     if (maxMinutes) filters.maxMinutes = Number(maxMinutes);
     if (maxCost) filters.maxCost = Number(maxCost);
     if (difficulty) filters.difficulty = difficulty;
-    const { data, error } = await supabase.functions.invoke("ai-suggest-recipes", { body: { foodItems: items, preferences: prefs, count: 5, likes, dislikes, filters } });
+    const { data, error } = await supabase.functions.invoke("ai-suggest-recipes", { body: { foodItems: items, preferences: prefs, count: 5, likes, dislikes, viewedTitles, frequentIngredients, filters } });
     setLoading(false);
     if (error) return toast.error(error.message);
     if (data?.error) return toast.error(data.error);
@@ -317,7 +335,7 @@ function Ricette() {
                     <Badge variant="outline"><Wallet className="mr-1 h-3 w-3" />~{r.estimated_cost.toFixed(2)} €</Badge>
                     {r.difficulty && <Badge variant="outline">{r.difficulty}</Badge>}
                   </div>
-                  <details className="text-sm">
+                  <details className="text-sm" onToggle={(e) => { if ((e.target as HTMLDetailsElement).open) trackView(r.title); }}>
                     <summary className="cursor-pointer text-muted-foreground">Ingredienti e preparazione</summary>
                     <ul className="mt-2 space-y-0.5">
                       {r.ingredients.map((ing, j) => (<li key={j}>• {ing.quantity ?? ""}{ing.unit ?? ""} {ing.name}</li>))}
@@ -357,7 +375,7 @@ function Ricette() {
                     {r.difficulty && <Badge variant="outline">{r.difficulty}</Badge>}
                   </div>
                   {r.instructions && (
-                    <details className="text-sm">
+                    <details className="text-sm" onToggle={(e) => { if ((e.target as HTMLDetailsElement).open) trackView(r.title, r.id); }}>
                       <summary className="cursor-pointer text-muted-foreground">Ingredienti e preparazione</summary>
                       <ul className="mt-2 space-y-0.5">
                         {(r.recipe_ingredients ?? []).map((ing: any) => (<li key={ing.id}>• {ing.quantity ?? ""}{ing.unit ?? ""} {ing.name}</li>))}

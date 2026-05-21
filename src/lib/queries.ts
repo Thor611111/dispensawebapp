@@ -208,6 +208,23 @@ export function useExpenses(householdId: string | null | undefined) {
   });
 }
 
+export function useRecipeViews() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["recipe-views", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("recipe_views")
+        .select("recipe_title, viewed_at")
+        .eq("user_id", user!.id)
+        .order("viewed_at", { ascending: false })
+        .limit(40);
+      return data ?? [];
+    },
+  });
+}
+
 export function useCurrentMealPlan(householdId: string | null | undefined) {
   return useQuery({
     queryKey: ["mealplan", householdId],

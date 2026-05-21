@@ -1,14 +1,14 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { Home, Package, Calendar, ShoppingCart, BarChart3, Settings as SettingsIcon, Sun, Moon, Loader2 } from "lucide-react";
+import { Home, Package, Calendar, ShoppingCart, ChefHat, Settings as SettingsIcon, Sun, Moon, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/lib/theme";
 
 const tabs = [
   { to: "/home", label: "Home", icon: Home },
   { to: "/dispensa", label: "Dispensa", icon: Package },
+  { to: "/ricette", label: "Ricette", icon: ChefHat },
   { to: "/piano", label: "Piano", icon: Calendar },
   { to: "/spesa", label: "Spesa", icon: ShoppingCart },
-  { to: "/statistiche", label: "Stats", icon: BarChart3 },
   { to: "/impostazioni", label: "Impostazioni", icon: SettingsIcon },
 ];
 
