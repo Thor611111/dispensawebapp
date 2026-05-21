@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useProfile, useHouseholdId, useMemberKind } from "@/lib/queries";
@@ -10,7 +10,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SettingsPageHeader } from "@/components/SettingsPage";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { BarChart3, ChevronRight } from "lucide-react";
 
 export const Route = createFileRoute("/_app/impostazioni/profilo")({ component: Page });
 
@@ -71,15 +70,6 @@ function Page() {
           <p className="text-xs text-muted-foreground">Questa impostazione è visibile solo qui nel profilo.</p>
         </div>
         <Button className="w-full" onClick={save} disabled={saving}>{saving ? "Salvataggio…" : "Salva"}</Button>
-
-        <Link to="/statistiche" className="mt-4 flex items-center gap-3 rounded-2xl border bg-card p-4 hover:bg-secondary/40 transition">
-          <BarChart3 className="h-5 w-5 text-primary" />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium">Le tue statistiche</p>
-            <p className="truncate text-xs text-muted-foreground">Spese, sprechi, andamento settimanale</p>
-          </div>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-        </Link>
       </div>
     </div>
   );

@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ymd } from "@/lib/date";
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/AppShell";
-import { useHouseholdId, useFoodItems, usePreferences, useProfile, useIsAdmin, useMemberKind, daysUntil } from "@/lib/queries";
+import { useHouseholdId, useFoodItems, usePreferences, useProfile, useIsAdmin, useMemberKind, useExpenses, daysUntil } from "@/lib/queries";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Sparkles, Loader2, Clock, Wallet, AlertTriangle, ShieldCheck, Plus, Camera } from "lucide-react";
@@ -18,6 +18,7 @@ function Home() {
   const { data: hid } = useHouseholdId();
   const { data: items = [] } = useFoodItems(hid);
   const { data: prefs } = usePreferences(hid);
+  const { data: expenses = [] } = useExpenses(hid);
   const { data: profile } = useProfile();
   const { data: isAdmin } = useIsAdmin();
   const { data: kind } = useMemberKind(hid);
@@ -29,6 +30,21 @@ function Home() {
   const today = new Date();
   const warnDays = (prefs as any)?.expiry_warning_days ?? 3;
   const expiring = items.filter((i) => { const d = daysUntil(i.expires_on); return d !== null && d <= warnDays; }).length;
+
+  // Budget settimanale (lun → dom in timezone Europe/Rome)
+  const weeklyBudget = Number((prefs as any)?.weekly_budget ?? 0);
+  const weekStart = (() => {
+    const d = new Date();
+    const day = d.getDay();
+    const diff = (day + 6) % 7;
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() - diff);
+    return d;
+  })();
+  const spentThisWeek = expenses
+    .filter((e: any) => new Date(e.spent_on) >= weekStart)
+    .reduce((s: number, e: any) => s + Number(e.amount ?? 0), 0);
+  const budgetPct = weeklyBudget > 0 ? Math.min(100, Math.round((spentThisWeek / weeklyBudget) * 100)) : 0;
 
   const monthLabel = today.toLocaleDateString("it-IT", { month: "long", year: "numeric" });
 
@@ -62,26 +78,31 @@ function Home() {
 
       <InstallAppCard variant="banner" dismissible />
 
-      {/* Flusso guidato: 4 step rapidi */}
-      <div className="mb-4 rounded-2xl border bg-gradient-to-br from-primary/10 to-primary/5 p-4">
-        <p className="mb-3 text-xs uppercase tracking-wide text-muted-foreground">Cosa fare ora</p>
-        <ol className="space-y-1.5 text-sm">
-          <li className="flex items-center gap-2"><span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/20 text-[10px] font-bold text-primary">1</span> Aggiungi alimenti</li>
-          <li className="flex items-center gap-2"><span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/20 text-[10px] font-bold text-primary">2</span> Vedi ricette suggerite</li>
-          <li className="flex items-center gap-2"><span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/20 text-[10px] font-bold text-primary">3</span> Scegli cosa cucinare</li>
-          <li className="flex items-center gap-2"><span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/20 text-[10px] font-bold text-primary">4</span> Aggiungi al piano pasti</li>
-        </ol>
-      </div>
-
-      <Link to="/dispensa" search={{ filter: "expiring" }} className="mb-4 block rounded-2xl border bg-card p-4 transition-colors hover:bg-secondary/40">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-xs text-muted-foreground">In scadenza ≤{warnDays}g</p>
-            <p className={`mt-1 text-2xl font-bold ${expiring > 0 ? "text-danger" : ""}`}>{expiring}</p>
+      <div className="mb-4 grid grid-cols-2 gap-3">
+        <Link to="/dispensa" search={{ filter: "expiring" }} className="block rounded-2xl border bg-card p-4 transition-colors hover:bg-secondary/40">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">In scadenza ≤{warnDays}g</p>
+              <p className={`mt-1 text-2xl font-bold ${expiring > 0 ? "text-danger" : ""}`}>{expiring}</p>
+            </div>
+            <AlertTriangle className={`h-7 w-7 shrink-0 ${expiring > 0 ? "text-danger" : "text-muted-foreground/40"}`} />
           </div>
-          <AlertTriangle className={`h-8 w-8 ${expiring > 0 ? "text-danger" : "text-muted-foreground/40"}`} />
-        </div>
-      </Link>
+        </Link>
+        <Link to="/spesa" className="block rounded-2xl border bg-card p-4 transition-colors hover:bg-secondary/40">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">Budget settimanale</p>
+              <p className="mt-1 text-2xl font-bold">{spentThisWeek.toFixed(0)}<span className="text-sm text-muted-foreground">{weeklyBudget > 0 ? `/${weeklyBudget.toFixed(0)}` : ""} €</span></p>
+            </div>
+            <Wallet className={`h-7 w-7 shrink-0 ${weeklyBudget > 0 && spentThisWeek >= weeklyBudget ? "text-danger" : "text-muted-foreground/40"}`} />
+          </div>
+          {weeklyBudget > 0 && (
+            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-secondary">
+              <div className={`h-full ${budgetPct >= 100 ? "bg-danger" : budgetPct >= 80 ? "bg-orange-500" : "bg-primary"}`} style={{ width: `${budgetPct}%` }} />
+            </div>
+          )}
+        </Link>
+      </div>
 
       {!isChild && (
         <div className="mb-5 grid grid-cols-2 gap-2">

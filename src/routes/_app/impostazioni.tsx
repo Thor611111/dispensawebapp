@@ -10,7 +10,7 @@ import { PasswordInput } from "@/components/PasswordInput";
 import { Badge } from "@/components/ui/badge";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { LogOut, Trash2, User, Bell, Utensils, Clock, Home as HomeIcon, ChevronRight, KeyRound, ShieldCheck, Sun, Moon, Monitor, Palette } from "lucide-react";
+import { LogOut, Trash2, User, Bell, Utensils, Clock, Home as HomeIcon, ChevronRight, KeyRound, ShieldCheck, Sun, Moon, Monitor, Palette, BarChart3 } from "lucide-react";
 import { InstallAppCard } from "@/components/InstallAppCard";
 import { useTheme } from "@/lib/theme";
 import {
@@ -66,6 +66,7 @@ function ImpostazioniIndex() {
     { to: "/impostazioni/notifiche", label: "Notifiche", desc: "Promemoria e canali", icon: Bell },
     { to: "/impostazioni/casa", label: "Casa & membri", desc: "Condividi il nucleo", icon: HomeIcon },
     { to: "/impostazioni/sicurezza", label: "Password e sicurezza", desc: "Cambia password", icon: KeyRound },
+    { to: "/statistiche" as const, label: "Statistiche", desc: "Spese, sprechi, andamento", icon: BarChart3 },
   ];
 
   return (

@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sparkles, Loader2, Check, X, Barcode, CameraOff, Wand2 } from "lucide-react";
+import { Sparkles, Loader2, Check, X, Barcode, CameraOff } from "lucide-react";
 import { toast } from "sonner";
 import { BrowserMultiFormatReader } from "@zxing/browser";
 
@@ -27,37 +27,6 @@ const UNIT_OPTIONS = [
   { v: "ml", l: "millilitri (ml)" },
   { v: "l", l: "litri (l)" },
 ] as const;
-
-// Stima rapida giorni di scadenza in base a categoria/nome
-function guessShelfLifeDays(name: string, category?: string | null): number | null {
-  const text = `${name} ${category ?? ""}`.toLowerCase();
-  const rules: { match: RegExp; days: number }[] = [
-    { match: /\b(latte fresco|panna fresca)\b/, days: 5 },
-    { match: /\b(yogurt|ricotta|mozzarella|stracchino|burrata)\b/, days: 7 },
-    { match: /\b(carne|pollo|tacchino|macinato|salsiccia)\b/, days: 2 },
-    { match: /\b(pesce|tonno fresco|salmone|gambero)\b/, days: 1 },
-    { match: /\b(uov[ao])\b/, days: 21 },
-    { match: /\b(insalata|spinaci|rucola|lattuga|valeriana)\b/, days: 4 },
-    { match: /\b(frutt|mel[ae]|banan|pera|pesca|albicocca|kiwi)\b/, days: 7 },
-    { match: /\b(verdur|pomodor|zucchin|melanzan|peperon|carot)\b/, days: 7 },
-    { match: /\b(pane fresco|focaccia)\b/, days: 3 },
-    { match: /\b(formagg|parmigian|grana|pecorin)\b/, days: 30 },
-    { match: /\b(latte uht|latte a lunga|panna uht)\b/, days: 90 },
-    { match: /\b(pasta|riso|farina|zucchero|sale|legumi|fagiol|lenticc|cec|orz|farro)\b/, days: 365 },
-    { match: /\b(scatoletta|conserv|passata|pelati|tonno in scatola|tonno sott)\b/, days: 540 },
-    { match: /\b(surgelat|congel)\b/, days: 180 },
-    { match: /\b(biscott|merendin|crackers|grissin)\b/, days: 120 },
-  ];
-  for (const r of rules) if (r.match.test(text)) return r.days;
-  if (/(fresco|fresca)/.test(text)) return 5;
-  return null;
-}
-
-function daysFromToday(days: number) {
-  const d = new Date();
-  d.setDate(d.getDate() + days);
-  return ymd(d);
-}
 
 function Aggiungi() {
   const { data: hid, isLoading: loadingHousehold } = useHouseholdId();
@@ -147,10 +116,7 @@ function Aggiungi() {
           setQty("1");
           setUnit("pz");
         }
-        // Scadenza suggerita
-        const days = guessShelfLifeDays(productName, catRaw);
-        if (days) setExpires(daysFromToday(days));
-        toast.success(`Trovato: ${productName}${days ? ` · scadenza suggerita ~${days}g` : ""}`);
+        toast.success(`Trovato: ${productName}`);
         setTab("manual");
       } else {
         toast.message(`Codice ${code}: prodotto non trovato. Compila a mano.`);
@@ -186,14 +152,6 @@ function Aggiungi() {
     await queryClient.invalidateQueries({ queryKey: ["food", hid] });
     toast.success("Aggiunto");
     navigate({ to: "/dispensa" });
-  };
-
-  const suggestExpiry = () => {
-    if (!name.trim()) return toast.error("Inserisci prima il nome");
-    const days = guessShelfLifeDays(name, category);
-    if (!days) return toast.message("Nessuna stima disponibile per questo alimento.");
-    setExpires(daysFromToday(days));
-    toast.success(`Scadenza suggerita: ~${days} giorni`);
   };
 
   const parseAi = async () => {
@@ -294,12 +252,7 @@ function Aggiungi() {
             )}
             <div className="space-y-1.5">
               <Label>Scadenza</Label>
-              <div className="flex gap-2">
-                <Input type="date" value={expires} onChange={(e) => setExpires(e.target.value)} />
-                <Button type="button" variant="outline" onClick={suggestExpiry} disabled={!name.trim()} title="Suggerisci scadenza">
-                  <Wand2 className="h-4 w-4" /> Suggerisci
-                </Button>
-              </div>
+              <Input type="date" value={expires} onChange={(e) => setExpires(e.target.value)} />
             </div>
             <div className="space-y-1.5">
               <Label>Prezzo (€) <span className="text-xs text-muted-foreground">(facoltativo)</span></Label>
