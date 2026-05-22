@@ -568,42 +568,6 @@ function Ricette() {
         </TabsContent>
 
         <TabsContent value="saved-orig-placeholder" className="hidden">
-          {saved.length === 0 ? (
-            <div className="rounded-2xl border border-dashed p-10 text-center text-muted-foreground">Nessuna ricetta salvata.</div>
-          ) : (
-            <ul className="space-y-3">
-              {saved.map((r: any) => (
-                <li key={r.id} className="rounded-2xl border bg-card p-4">
-                  <div className="mb-2 flex items-start justify-between gap-3">
-                    <h3 className="font-semibold leading-tight">{r.title}</h3>
-                    <div className="flex gap-1">
-                      <Button size="icon" variant="ghost" onClick={() => toggleFav(r.id, r.is_favorite)}><Heart className={`h-4 w-4 ${r.is_favorite ? "fill-primary text-primary" : ""}`} /></Button>
-                      <Button size="icon" variant="ghost" onClick={() => removeSaved(r.id)}><Trash2 className="h-4 w-4 text-muted-foreground" /></Button>
-                    </div>
-                  </div>
-                  <div className="mb-2 flex flex-wrap gap-2 text-xs">
-                    {r.prep_minutes && <Badge><Clock className="mr-1 h-3 w-3" />{r.prep_minutes} min</Badge>}
-                    {r.estimated_cost && <Badge variant="outline"><Wallet className="mr-1 h-3 w-3" />~{Number(r.estimated_cost).toFixed(2)} €</Badge>}
-                    {r.difficulty && <Badge variant="outline">{r.difficulty}</Badge>}
-                  </div>
-                  {r.instructions && (
-                    <details className="text-sm" onToggle={(e) => { if ((e.target as HTMLDetailsElement).open) trackView(r.title, r.id); }}>
-                      <summary className="cursor-pointer text-muted-foreground">Ingredienti e preparazione</summary>
-                      <ul className="mt-2 space-y-0.5">
-                        {(r.recipe_ingredients ?? []).map((ing: any) => (<li key={ing.id}>• {ing.quantity ?? ""}{ing.unit ?? ""} {ing.name}</li>))}
-                      </ul>
-                      <p className="mt-2 whitespace-pre-line text-muted-foreground">{r.instructions}</p>
-                    </details>
-                  )}
-                  <Button size="sm" variant="outline" className="w-full mt-3" onClick={() => setPlanFor({ title: r.title, recipe_id: r.id, ingredients: r.recipe_ingredients })}>
-                    <CalendarPlus className="h-4 w-4" /> Aggiungi al piano
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </TabsContent>
-
         <TabsContent value="mine" className="space-y-3">
           <Button asChild className="w-full"><Link to="/ricette/nuova"><Plus className="h-4 w-4" /> Crea ricetta personalizzata</Link></Button>
           {saved.filter((r: any) => !r.created_by || r.created_by === user?.id).length === 0 && (
