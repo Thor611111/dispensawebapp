@@ -9,7 +9,7 @@ import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Sparkles, Loader2, Clock, Wallet, ThumbsDown, ThumbsUp, Heart, Plus, Trash2, BookmarkPlus, SlidersHorizontal, Barcode, Receipt, AlertCircle, CheckCircle2, CalendarPlus } from "lucide-react";
+import { Sparkles, Loader2, Clock, Wallet, ThumbsDown, ThumbsUp, Heart, Plus, Trash2, BookmarkPlus, SlidersHorizontal, Barcode, Receipt, AlertCircle, CheckCircle2, CalendarPlus, Search, X, Compass } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
@@ -41,6 +41,13 @@ function Ricette() {
   const [planDate, setPlanDate] = useState<string>(() => ymd(new Date()));
   const [planSlot, setPlanSlot] = useState<string>("dinner");
   const [planSaving, setPlanSaving] = useState(false);
+  // Esplora
+  const [exploreQuery, setExploreQuery] = useState("");
+  const [exploreIngInput, setExploreIngInput] = useState("");
+  const [exploreIngs, setExploreIngs] = useState<string[]>([]);
+  const [exploreLoading, setExploreLoading] = useState(false);
+  const [exploreRecipes, setExploreRecipes] = useState<R[]>([]);
+  const QUICK_INGS = ["pasta", "riso", "pollo", "uova", "patate", "zucchine", "pomodoro", "tonno", "ceci", "spinaci"];
 
   const todayStr = ymd(new Date());
   const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
@@ -82,6 +89,36 @@ function Ricette() {
     if (error) return toast.error(error.message);
     if (data?.error) return toast.error(data.error);
     setRecipes(data.recipes ?? []);
+  };
+
+  const addExploreIng = (raw: string) => {
+    const v = raw.trim().toLowerCase();
+    if (!v) return;
+    if (exploreIngs.includes(v)) return;
+    setExploreIngs([...exploreIngs, v]);
+    setExploreIngInput("");
+  };
+
+  const exploreSearch = async () => {
+    if (!exploreQuery.trim() && exploreIngs.length === 0) {
+      return toast.info("Inserisci un nome o un ingrediente");
+    }
+    setExploreLoading(true);
+    const { data, error } = await supabase.functions.invoke("ai-suggest-recipes", {
+      body: {
+        foodItems: items,
+        preferences: prefs,
+        count: 6,
+        likes, dislikes,
+        mode: "explore",
+        query: exploreQuery.trim(),
+        searchIngredients: exploreIngs,
+      },
+    });
+    setExploreLoading(false);
+    if (error) return toast.error(error.message);
+    if (data?.error) return toast.error(data.error);
+    setExploreRecipes(data.recipes ?? []);
   };
 
   const giveFeedback = async (title: string, fb: "liked" | "disliked") => {
@@ -218,6 +255,7 @@ function Ricette() {
         <TabsList className="w-full">
           <TabsTrigger value="today" className="flex-1">Da cucinare</TabsTrigger>
           <TabsTrigger value="ai" className="flex-1">Suggerite</TabsTrigger>
+          <TabsTrigger value="explore" className="flex-1">Esplora</TabsTrigger>
           <TabsTrigger value="saved" className="flex-1">Salvate ({saved.length})</TabsTrigger>
           <TabsTrigger value="mine" className="flex-1">Mie</TabsTrigger>
         </TabsList>
