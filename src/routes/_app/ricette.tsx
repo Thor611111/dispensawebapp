@@ -567,7 +567,6 @@ function Ricette() {
           )}
         </TabsContent>
 
-        <TabsContent value="saved-orig-placeholder" className="hidden">
         <TabsContent value="mine" className="space-y-3">
           <Button asChild className="w-full"><Link to="/ricette/nuova"><Plus className="h-4 w-4" /> Crea ricetta personalizzata</Link></Button>
           {saved.filter((r: any) => !r.created_by || r.created_by === user?.id).length === 0 && (
