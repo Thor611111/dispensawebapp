@@ -394,6 +394,146 @@ function Ricette() {
         </TabsContent>
 
         <TabsContent value="saved" className="space-y-3">
+        </TabsContent>
+
+        <TabsContent value="explore" className="space-y-3">
+          <div className="rounded-2xl border bg-card p-3 space-y-3">
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  className="pl-8"
+                  placeholder="Cerca per nome (es. carbonara, tiramisù)"
+                  value={exploreQuery}
+                  onChange={(e) => setExploreQuery(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") exploreSearch(); }}
+                />
+              </div>
+              <Button size="sm" onClick={exploreSearch} disabled={exploreLoading}>
+                {exploreLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Compass className="h-4 w-4" />}
+                Cerca
+              </Button>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs text-muted-foreground">Ingredienti da includere</label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Aggiungi ingrediente"
+                  value={exploreIngInput}
+                  onChange={(e) => setExploreIngInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addExploreIng(exploreIngInput); } }}
+                />
+                <Button size="sm" variant="outline" onClick={() => addExploreIng(exploreIngInput)}>
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              {exploreIngs.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {exploreIngs.map((ing) => (
+                    <button
+                      key={ing}
+                      onClick={() => setExploreIngs(exploreIngs.filter((x) => x !== ing))}
+                      className="inline-flex items-center gap-1 rounded-full bg-primary/15 text-primary px-2.5 py-1 text-xs font-medium animate-scale-in hover:bg-primary/25 transition"
+                    >
+                      {ing}
+                      <X className="h-3 w-3" />
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {QUICK_INGS.filter((q) => !exploreIngs.includes(q)).map((q) => (
+                  <button
+                    key={q}
+                    onClick={() => addExploreIng(q)}
+                    className="inline-flex items-center gap-1 rounded-full border border-dashed px-2.5 py-1 text-xs text-muted-foreground hover:bg-secondary/60 hover:text-foreground transition"
+                  >
+                    <Plus className="h-3 w-3" /> {q}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {exploreLoading && (
+            <ul className="space-y-3">
+              {[0, 1, 2].map((i) => (
+                <li key={i} className="rounded-2xl border bg-card p-4 animate-pulse">
+                  <div className="h-4 w-2/3 bg-muted rounded mb-2" />
+                  <div className="h-3 w-1/2 bg-muted rounded mb-3" />
+                  <div className="flex gap-2"><div className="h-5 w-16 bg-muted rounded-full" /><div className="h-5 w-20 bg-muted rounded-full" /></div>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {!exploreLoading && exploreRecipes.length === 0 && (
+            <div className="rounded-2xl border border-dashed p-10 text-center space-y-2">
+              <Compass className="h-8 w-8 mx-auto text-muted-foreground" />
+              <p className="text-sm font-medium">Esplora nuove ricette</p>
+              <p className="text-xs text-muted-foreground">Cerca per nome o aggiungi ingredienti che vuoi usare. Le ricette non sono limitate alla tua dispensa.</p>
+            </div>
+          )}
+
+          {!exploreLoading && exploreRecipes.length > 0 && (
+            <ul className="space-y-3">
+              {exploreRecipes.map((r, i) => {
+                const have = new Set(items.map((it: any) => it.name.toLowerCase()));
+                const missing = r.ingredients.filter((ing) => !have.has(ing.name.toLowerCase()));
+                const ready = missing.length === 0;
+                const fb = myFeedback(r.title);
+                return (
+                  <li key={i} className={`rounded-2xl border bg-card p-4 animate-fade-in ${ready ? "ring-2 ring-primary/40" : ""}`}>
+                    <div className="mb-2 flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-semibold leading-tight">{r.title}</h3>
+                        {r.description && <p className="text-xs text-muted-foreground mt-0.5">{r.description}</p>}
+                      </div>
+                      <div className="flex gap-1">
+                        <Button size="icon" variant={fb === "liked" ? "default" : "ghost"} onClick={() => giveFeedback(r.title, "liked")}><ThumbsUp className="h-4 w-4" /></Button>
+                        <Button size="icon" variant={fb === "disliked" ? "default" : "ghost"} onClick={() => giveFeedback(r.title, "disliked")}><ThumbsDown className="h-4 w-4" /></Button>
+                      </div>
+                    </div>
+                    <div className="mb-2 flex flex-wrap gap-1.5 text-xs">
+                      {ready ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 px-2 py-0.5"><CheckCircle2 className="h-3 w-3" /> Pronta da cucinare</span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 px-2 py-0.5"><AlertCircle className="h-3 w-3" /> Mancano {missing.length}</span>
+                      )}
+                      <Badge><Clock className="mr-1 h-3 w-3" />{r.prep_minutes} min</Badge>
+                      <Badge variant="outline"><Wallet className="mr-1 h-3 w-3" />~{r.estimated_cost.toFixed(2)} €</Badge>
+                      {r.difficulty && <Badge variant="outline">{r.difficulty}</Badge>}
+                    </div>
+                    <details className="text-sm" onToggle={(e) => { if ((e.target as HTMLDetailsElement).open) trackView(r.title); }}>
+                      <summary className="cursor-pointer text-muted-foreground">Ingredienti e preparazione</summary>
+                      <ul className="mt-2 space-y-0.5">
+                        {r.ingredients.map((ing, j) => {
+                          const isMissing = !have.has(ing.name.toLowerCase());
+                          return (
+                            <li key={j} className={isMissing ? "text-amber-700 dark:text-amber-300" : ""}>
+                              • {ing.quantity ?? ""}{ing.unit ?? ""} {ing.name}{isMissing ? " (manca)" : ""}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                      <p className="mt-2 whitespace-pre-line text-muted-foreground">{r.instructions}</p>
+                    </details>
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      <Button size="sm" variant="outline" onClick={() => saveRecipe(r)}><BookmarkPlus className="h-4 w-4" /> Salva</Button>
+                      <Button size="sm" variant="outline" onClick={() => addToShopping(r)}>Mancanti → spesa</Button>
+                    </div>
+                    <Button size="sm" variant="outline" className="w-full mt-2" onClick={() => setPlanFor({ title: r.title, ingredients: r.ingredients })}>
+                      <CalendarPlus className="h-4 w-4" /> Pianifica
+                    </Button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </TabsContent>
+
+        <TabsContent value="saved-orig-placeholder" className="hidden">
           {saved.length === 0 ? (
             <div className="rounded-2xl border border-dashed p-10 text-center text-muted-foreground">Nessuna ricetta salvata.</div>
           ) : (
