@@ -15,7 +15,12 @@ import { Sparkles, Loader2, Check, X, Barcode, CameraOff } from "lucide-react";
 import { toast } from "sonner";
 import { BrowserMultiFormatReader } from "@zxing/browser";
 
-export const Route = createFileRoute("/_app/dispensa/aggiungi")({ component: Aggiungi });
+export const Route = createFileRoute("/_app/dispensa/aggiungi")({
+  component: Aggiungi,
+  validateSearch: (s: Record<string, unknown>) => ({
+    scan: typeof s.scan === "number" || typeof s.scan === "string" ? s.scan : undefined,
+  }),
+});
 
 type Parsed = { name: string; quantity: number; unit: string; category?: string; location: string; price?: number; shelf_life_days?: number; _keep?: boolean };
 

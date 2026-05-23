@@ -61,11 +61,15 @@ function Ricette() {
   const dislikes = feedback.filter((f) => f.feedback === "disliked").map((f) => f.recipe_title).filter(Boolean) as string[];
   // Titoli visti di recente: segnale di interesse per l'AI
   const viewedTitles = Array.from(new Set((views as any[]).map((v) => v.recipe_title).filter(Boolean))).slice(0, 20) as string[];
-  // Ingredienti più frequenti nelle ricette salvate + viste (top 10)
+  // Ingredienti più frequenti: combina ricette salvate + alimenti in dispensa (segnale di abitudine)
   const frequentIngredients = (() => {
     const counts: Record<string, number> = {};
     for (const r of saved as any[]) for (const ing of (r.recipe_ingredients ?? [])) {
       const k = (ing.name ?? "").toLowerCase().trim();
+      if (k) counts[k] = (counts[k] ?? 0) + 2; // ricette salvate pesano di più
+    }
+    for (const it of items as any[]) {
+      const k = (it.name ?? "").toLowerCase().trim();
       if (k) counts[k] = (counts[k] ?? 0) + 1;
     }
     return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([k]) => k);

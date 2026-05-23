@@ -11,6 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Plus, Trash2, Refrigerator, Snowflake, Package2, Box, Trash, AlertTriangle, RotateCcw, MoreVertical } from "lucide-react";
 import { toast } from "sonner";
 import { QuantityStepper } from "@/components/QuantityStepper";
+import { SwipeRow } from "@/components/SwipeRow";
+import { Barcode } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -129,9 +131,14 @@ function Dispensa() {
         subtitle={filtered.length > 0 ? `${filtered.length} ${filtered.length === 1 ? "alimento" : "alimenti"}` : "Cosa hai in casa, sempre aggiornato."}
         right={
           isChild ? null : (
-            <Button asChild size="sm">
-              <Link to="/dispensa/aggiungi"><Plus className="h-4 w-4" /> Aggiungi</Link>
-            </Button>
+            <div className="flex gap-2">
+              <Button asChild size="sm" variant="outline">
+                <Link to="/dispensa/aggiungi" search={{ scan: 1 }}><Barcode className="h-4 w-4" /></Link>
+              </Button>
+              <Button asChild size="sm">
+                <Link to="/dispensa/aggiungi"><Plus className="h-4 w-4" /> Aggiungi</Link>
+              </Button>
+            </div>
           )
         }
       />
@@ -193,7 +200,14 @@ function Dispensa() {
               else { badgeText = `${d}g`; }
             }
             return (
-              <li key={it.id} className="flex items-center gap-3 rounded-xl border bg-card p-3">
+              <li key={it.id}>
+                <SwipeRow
+                  actions={isChild ? [] : [
+                    { label: "Storna", icon: <RotateCcw className="h-4 w-4" />, onClick: () => setStornoItem(it) },
+                    { label: "Elimina", icon: <Trash2 className="h-4 w-4" />, variant: "destructive", onClick: () => remove(it.id) },
+                  ]}
+                >
+                  <div className="flex items-center gap-3 rounded-xl border bg-card p-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="truncate font-medium">{it.name}</p>
@@ -224,6 +238,8 @@ function Dispensa() {
                     </DropdownMenuContent>
                   </DropdownMenu>
                 )}
+                  </div>
+                </SwipeRow>
               </li>
             );
           })}
