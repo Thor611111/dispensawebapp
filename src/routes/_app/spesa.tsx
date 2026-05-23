@@ -18,6 +18,7 @@ import { Switch } from "@/components/ui/switch";
 import { reconcileReceipt, type ReceiptRow } from "@/lib/receipt-match";
 import { toast } from "sonner";
 import { QuantityStepper } from "@/components/QuantityStepper";
+import { SwipeRow } from "@/components/SwipeRow";
 import { compressImage } from "@/lib/image-compress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
@@ -424,7 +425,14 @@ function Spesa() {
       ) : (
         <ul className="space-y-1.5">
           {items.map((it) => (
-            <li key={it.id} className="flex items-center gap-3 rounded-xl border bg-card p-3">
+            <li key={it.id}>
+              <SwipeRow
+                actions={[
+                  { label: "Acquistato", icon: <Check className="h-4 w-4" />, onClick: () => openBuy(it) },
+                  { label: "Elimina", icon: <Trash2 className="h-4 w-4" />, variant: "destructive", onClick: () => remove(it.id) },
+                ]}
+              >
+                <div className="flex items-center gap-3 rounded-xl border bg-card p-3">
               <Checkbox checked={it.checked} onCheckedChange={(v) => toggle(it.id, !!v)} />
               <div className="flex-1 min-w-0">
                 <p className={`truncate text-sm ${it.checked ? "text-muted-foreground line-through" : ""}`}>{it.name}</p>
@@ -443,6 +451,8 @@ function Spesa() {
               </div>
               <Button size="icon" variant="ghost" onClick={() => openBuy(it)} title="Acquistato"><Check className="h-4 w-4 text-primary" /></Button>
               <Button size="icon" variant="ghost" onClick={() => remove(it.id)}><Trash2 className="h-4 w-4 text-muted-foreground" /></Button>
+                </div>
+              </SwipeRow>
             </li>
           ))}
         </ul>
