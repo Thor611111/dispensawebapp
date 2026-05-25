@@ -69,34 +69,38 @@
 }
 
 :root {
-  --radius: 0.625rem;
-  /* PantryAI palette: warm cream + sage green + terracotta accent */
-  --background: oklch(0.985 0.012 95);
-  --foreground: oklch(0.24 0.03 150);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.24 0.03 150);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.24 0.03 150);
-  --primary: oklch(0.55 0.13 150);
-  --primary-foreground: oklch(0.985 0.012 95);
-  --secondary: oklch(0.94 0.025 95);
-  --secondary-foreground: oklch(0.32 0.04 150);
-  --muted: oklch(0.95 0.018 95);
-  --muted-foreground: oklch(0.5 0.025 150);
-  --accent: oklch(0.72 0.16 55);
-  --accent-foreground: oklch(0.985 0.012 95);
-  --destructive: oklch(0.6 0.21 27);
-  --destructive-foreground: oklch(0.985 0.012 95);
-  --border: oklch(0.9 0.02 95);
-  --input: oklch(0.92 0.02 95);
-  --ring: oklch(0.55 0.13 150);
-  --success: oklch(0.62 0.15 150);
-  --success-foreground: oklch(0.985 0.012 95);
-  --warning: oklch(0.78 0.15 80);
-  --warning-foreground: oklch(0.24 0.04 80);
-  --danger: oklch(0.6 0.21 27);
-  --danger-foreground: oklch(0.985 0.012 95);
-  --surface-elevated: oklch(0.99 0.008 95);
+  --radius: 1rem;
+  /* PantryAI: cucina di casa — terracotta calda, panna, basilico */
+  --background: oklch(0.975 0.018 75);
+  --foreground: oklch(0.22 0.04 40);
+  --card: oklch(0.995 0.008 80);
+  --card-foreground: oklch(0.22 0.04 40);
+  --popover: oklch(0.995 0.008 80);
+  --popover-foreground: oklch(0.22 0.04 40);
+  --primary: oklch(0.65 0.17 40); /* terracotta calda */
+  --primary-foreground: oklch(0.985 0.012 80);
+  --secondary: oklch(0.93 0.03 75);
+  --secondary-foreground: oklch(0.3 0.05 40);
+  --muted: oklch(0.95 0.022 75);
+  --muted-foreground: oklch(0.5 0.03 50);
+  --accent: oklch(0.68 0.15 145); /* basilico */
+  --accent-foreground: oklch(0.985 0.012 80);
+  --destructive: oklch(0.6 0.22 27);
+  --destructive-foreground: oklch(0.985 0.012 80);
+  --border: oklch(0.89 0.025 75);
+  --input: oklch(0.92 0.022 75);
+  --ring: oklch(0.65 0.17 40);
+  --success: oklch(0.65 0.15 150);
+  --success-foreground: oklch(0.985 0.012 80);
+  --warning: oklch(0.78 0.16 75);
+  --warning-foreground: oklch(0.22 0.05 75);
+  --danger: oklch(0.6 0.22 27);
+  --danger-foreground: oklch(0.985 0.012 80);
+  --surface-elevated: oklch(1 0 0);
+  --gradient-warm: linear-gradient(135deg, oklch(0.72 0.17 45) 0%, oklch(0.78 0.15 65) 100%);
+  --gradient-fresh: linear-gradient(135deg, oklch(0.72 0.14 145) 0%, oklch(0.78 0.13 110) 100%);
+  --shadow-soft: 0 1px 2px oklch(0.3 0.05 40 / 0.04), 0 8px 24px -8px oklch(0.3 0.05 40 / 0.10);
+  --shadow-pop: 0 10px 30px -10px oklch(0.65 0.17 40 / 0.35);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -113,32 +117,36 @@
 }
 
 .dark {
-  --background: oklch(0.129 0.042 264.695);
-  --foreground: oklch(0.984 0.003 247.858);
-  --card: oklch(0.208 0.042 265.755);
-  --card-foreground: oklch(0.984 0.003 247.858);
-  --popover: oklch(0.208 0.042 265.755);
-  --popover-foreground: oklch(0.984 0.003 247.858);
-  --primary: oklch(0.929 0.013 255.508);
-  --primary-foreground: oklch(0.208 0.042 265.755);
-  --secondary: oklch(0.279 0.041 260.031);
-  --secondary-foreground: oklch(0.984 0.003 247.858);
-  --muted: oklch(0.279 0.041 260.031);
-  --muted-foreground: oklch(0.704 0.04 256.788);
-  --accent: oklch(0.279 0.041 260.031);
-  --accent-foreground: oklch(0.984 0.003 247.858);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.984 0.003 247.858);
+  --background: oklch(0.18 0.025 40);
+  --foreground: oklch(0.97 0.012 75);
+  --card: oklch(0.23 0.03 40);
+  --card-foreground: oklch(0.97 0.012 75);
+  --popover: oklch(0.23 0.03 40);
+  --popover-foreground: oklch(0.97 0.012 75);
+  --primary: oklch(0.72 0.17 45);
+  --primary-foreground: oklch(0.18 0.03 40);
+  --secondary: oklch(0.28 0.035 40);
+  --secondary-foreground: oklch(0.97 0.012 75);
+  --muted: oklch(0.28 0.035 40);
+  --muted-foreground: oklch(0.72 0.025 60);
+  --accent: oklch(0.7 0.14 145);
+  --accent-foreground: oklch(0.18 0.03 40);
+  --destructive: oklch(0.7 0.19 22);
+  --destructive-foreground: oklch(0.97 0.012 75);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.551 0.027 264.364);
+  --ring: oklch(0.72 0.17 45);
   --success: oklch(0.65 0.15 150);
-  --success-foreground: oklch(0.984 0.003 247.858);
-  --warning: oklch(0.78 0.15 80);
-  --warning-foreground: oklch(0.18 0.04 80);
+  --success-foreground: oklch(0.97 0.012 75);
+  --warning: oklch(0.78 0.16 75);
+  --warning-foreground: oklch(0.18 0.05 75);
   --danger: oklch(0.7 0.19 22);
-  --danger-foreground: oklch(0.984 0.003 247.858);
-  --surface-elevated: oklch(0.24 0.045 265);
+  --danger-foreground: oklch(0.97 0.012 75);
+  --surface-elevated: oklch(0.26 0.03 40);
+  --gradient-warm: linear-gradient(135deg, oklch(0.6 0.18 35) 0%, oklch(0.65 0.16 60) 100%);
+  --gradient-fresh: linear-gradient(135deg, oklch(0.58 0.15 145) 0%, oklch(0.65 0.14 110) 100%);
+  --shadow-soft: 0 1px 2px oklch(0 0 0 / 0.3), 0 10px 30px -10px oklch(0 0 0 / 0.5);
+  --shadow-pop: 0 10px 30px -10px oklch(0.72 0.17 45 / 0.45);
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
@@ -162,5 +170,24 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-feature-settings: "ss01", "cv11";
+    background-image:
+      radial-gradient(circle at 0% 0%, oklch(0.72 0.17 45 / 0.06), transparent 50%),
+      radial-gradient(circle at 100% 0%, oklch(0.68 0.15 145 / 0.05), transparent 45%);
+    background-attachment: fixed;
   }
+
+  h1, h2, h3, .font-display {
+    font-family: "Fraunces", ui-serif, Georgia, serif;
+    font-optical-sizing: auto;
+    letter-spacing: -0.015em;
+  }
+}
+
+@layer utilities {
+  .bg-gradient-warm { background-image: var(--gradient-warm); }
+  .bg-gradient-fresh { background-image: var(--gradient-fresh); }
+  .shadow-soft { box-shadow: var(--shadow-soft); }
+  .shadow-pop { box-shadow: var(--shadow-pop); }
 }
