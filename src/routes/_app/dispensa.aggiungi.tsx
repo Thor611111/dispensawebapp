@@ -95,17 +95,40 @@ function Aggiungi() {
   const handleBarcode = async (code: string) => {
     setLookup(true);
     try {
-      const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json`);
+      const fields = "product_name,product_name_it,brands,quantity,categories,categories_tags_it,categories_tags,nutriments,periods_after_opening";
+      const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json?fields=${fields}&lc=it`);
       const json = await res.json();
       if (json.status === 1 && json.product) {
         const p = json.product;
-        const productName = p.product_name_it || p.product_name || `Prodotto ${code}`;
+        const baseName = (p.product_name_it || p.product_name || "").trim();
+        const brand = (p.brands || "").split(",")[0]?.trim();
+        const productName = baseName
+          ? (brand && !baseName.toLowerCase().includes(brand.toLowerCase()) ? `${baseName} ${brand}` : baseName)
+          : `Prodotto ${code}`;
         setName(productName);
-        // Categoria
-        const catRaw: string =
-          (p.categories_tags?.[0] as string)?.replace(/^[a-z]{2}:/, "")?.replace(/-/g, " ") ||
-          (p.categories?.split(",")[0] ?? "").trim();
-        if (catRaw) setCategory(catRaw);
+        // Categoria: preferisci tag italiani, poi mappa alle macro-categorie note
+        const tagsIt: string[] = p.categories_tags_it ?? [];
+        const tags: string[] = p.categories_tags ?? [];
+        const norm = (t: string) => t.replace(/^[a-z]{2}:/, "").replace(/-/g, " ").trim();
+        const allTags = [...tagsIt.map(norm), ...tags.map(norm)].map((s) => s.toLowerCase());
+        const macroMap: [RegExp, string][] = [
+          [/latticini|formaggi|yogurt|latte/, "Latticini"],
+          [/carne|salumi|prosciutt|salam/, "Carne e Pesce"],
+          [/pesce|tonno|salmon|frutti di mare/, "Carne e Pesce"],
+          [/pasta|riso|cereali|farin|pane/, "Pasta e Cereali"],
+          [/frutta|verdur|ortaggi|legum/, "Frutta e Verdura"],
+          [/surgelat|congelat/, "Surgelati"],
+          [/bevand|bibite|acqua|succh|caff|tè/, "Bevande"],
+          [/dolc|biscott|cioccolat|snack|merendin/, "Dolci e Snack"],
+        ];
+        let mapped: string | null = null;
+        for (const [rx, label] of macroMap) if (allTags.some((t) => rx.test(t))) { mapped = label; break; }
+        const fallback = (tagsIt[0] && norm(tagsIt[0])) || (p.categories?.split(",")[0] ?? "").trim();
+        if (mapped || fallback) setCategory(mapped ?? fallback);
+        // Suggerisci posizione in base alla categoria
+        if (mapped === "Latticini" || mapped === "Carne e Pesce") setLocation("fridge");
+        else if (mapped === "Surgelati") setLocation("freezer");
+        else if (mapped) setLocation("pantry");
         // Quantità standard dalla confezione
         const qStr = (p.quantity ?? "").toString().toLowerCase();
         const m = qStr.match(/([\d.,]+)\s*(kg|g|l|ml|cl)/);
@@ -120,6 +143,16 @@ function Aggiungi() {
         } else {
           setQty("1");
           setUnit("pz");
+        }
+        // Scadenza stimata: usa "periods_after_opening" se presente (formato ISO 8601, es. "P7D")
+        const pao: string = p.periods_after_opening ?? "";
+        const md = pao.match(/P(\d+)([DMY])/i);
+        if (md && !expires) {
+          const n = parseInt(md[1], 10);
+          const mult = md[2].toUpperCase() === "Y" ? 365 : md[2].toUpperCase() === "M" ? 30 : 1;
+          const dt = new Date();
+          dt.setDate(dt.getDate() + n * mult);
+          setExpires(ymd(dt));
         }
         toast.success(`Trovato: ${productName}`);
         setTab("manual");

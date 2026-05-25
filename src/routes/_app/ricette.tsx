@@ -9,8 +9,9 @@ import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Sparkles, Loader2, Clock, Wallet, ThumbsDown, ThumbsUp, Heart, Plus, Trash2, BookmarkPlus, SlidersHorizontal, Barcode, Receipt, AlertCircle, CheckCircle2, CalendarPlus, Search, X, Compass } from "lucide-react";
+import { Sparkles, Loader2, Clock, Wallet, ThumbsDown, ThumbsUp, Heart, Plus, Trash2, BookmarkPlus, SlidersHorizontal, AlertCircle, CheckCircle2, CalendarPlus, Search, X, Compass, ChefHat, Flame } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { SwipeRow } from "@/components/SwipeRow";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -246,15 +247,6 @@ function Ricette() {
     <div>
       <PageHeader title="Cosa cucino?" subtitle="Ricette pensate per te." />
 
-      <div className="mb-3 grid grid-cols-2 gap-2">
-        <Button asChild size="sm" variant="outline">
-          <Link to="/dispensa/aggiungi" search={{ scan: 1 } as any}><Barcode className="h-4 w-4" /> Scan codice</Link>
-        </Button>
-        <Button asChild size="sm" variant="outline">
-          <Link to="/spesa" search={{ scan: 1 } as any}><Receipt className="h-4 w-4" /> Scan scontrino</Link>
-        </Button>
-      </div>
-
       <Tabs defaultValue="today">
         <TabsList className="w-full">
           <TabsTrigger value="today" className="flex-1">Da cucinare</TabsTrigger>
@@ -322,16 +314,25 @@ function Ricette() {
         </TabsContent>
 
         <TabsContent value="ai" className="space-y-3">
-          <div className="flex gap-2">
-            <Button size="sm" onClick={generate} disabled={loading} className="flex-1">
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} Suggerisci ricette
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => setShowFilters((v) => !v)}>
-              <SlidersHorizontal className="h-4 w-4" />
+          <div className="relative overflow-hidden rounded-2xl border bg-gradient-to-br from-primary/15 via-card to-card p-4 animate-fade-in">
+            <div className="flex items-center gap-3">
+              <div className="grid h-11 w-11 place-items-center rounded-full bg-primary/20 text-primary">
+                <ChefHat className="h-5 w-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold leading-tight">Cosa ti va stasera?</p>
+                <p className="text-xs text-muted-foreground">Lo chef AI sceglie per te 5 idee al volo.</p>
+              </div>
+              <Button size="sm" variant="ghost" onClick={() => setShowFilters((v) => !v)} aria-label="Filtri">
+                <SlidersHorizontal className="h-4 w-4" />
+              </Button>
+            </div>
+            <Button size="sm" onClick={generate} disabled={loading} className="mt-3 w-full hover-scale">
+              {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Sto pensando…</> : <><Sparkles className="h-4 w-4" /> Suggerisci ricette</>}
             </Button>
           </div>
           {showFilters && (
-            <div className="grid grid-cols-3 gap-2 rounded-xl border bg-card p-3">
+            <div className="grid grid-cols-3 gap-2 rounded-xl border bg-card p-3 animate-fade-in">
               <div className="space-y-1">
                 <label className="text-xs text-muted-foreground">Max min</label>
                 <Input type="number" value={maxMinutes} onChange={(e) => setMaxMinutes(e.target.value)} placeholder="30" />
@@ -355,42 +356,80 @@ function Ricette() {
             </div>
           )}
           {recipes.length === 0 && !loading && (
-            <div className="rounded-2xl border border-dashed p-10 text-center">
-              <p className="text-muted-foreground">Tocca "Suggerisci" per ricevere ricette su misura.</p>
+            <div className="rounded-2xl border border-dashed p-10 text-center space-y-2">
+              <div className="text-4xl">🍳</div>
+              <p className="text-sm text-muted-foreground">Premi <span className="font-medium text-foreground">Suggerisci</span> e ti propongo qualcosa di buono.</p>
             </div>
+          )}
+          {loading && (
+            <ul className="space-y-3">
+              {[0, 1, 2].map((i) => (
+                <li key={i} className="rounded-2xl border bg-card p-4 animate-pulse">
+                  <div className="h-4 w-2/3 bg-muted rounded mb-2" />
+                  <div className="h-3 w-1/2 bg-muted rounded mb-3" />
+                  <div className="flex gap-2"><div className="h-5 w-16 bg-muted rounded-full" /><div className="h-5 w-20 bg-muted rounded-full" /></div>
+                </li>
+              ))}
+            </ul>
           )}
           <ul className="space-y-3">
             {recipes.map((r, i) => {
               const fb = myFeedback(r.title);
+              const have = new Set(items.map((it: any) => it.name.toLowerCase()));
+              const missing = r.ingredients.filter((ing) => !have.has(ing.name.toLowerCase()));
+              const ready = missing.length === 0;
               return (
-                <li key={i} className="rounded-2xl border bg-card p-4">
-                  <div className="mb-2 flex items-start justify-between gap-3">
-                    <h3 className="font-semibold leading-tight">{r.title}</h3>
-                    <div className="flex gap-1">
-                      <Button size="icon" variant={fb === "liked" ? "default" : "ghost"} onClick={() => giveFeedback(r.title, "liked")} title="Mi piace"><ThumbsUp className="h-4 w-4" /></Button>
-                      <Button size="icon" variant={fb === "disliked" ? "default" : "ghost"} onClick={() => giveFeedback(r.title, "disliked")} title="No grazie"><ThumbsDown className="h-4 w-4" /></Button>
+                <li key={i} className="animate-fade-in" style={{ animationDelay: `${i * 60}ms`, animationFillMode: "backwards" }}>
+                  <SwipeRow
+                    actions={[
+                      { label: "Mi piace", icon: <ThumbsUp className="h-4 w-4" />, onClick: () => giveFeedback(r.title, "liked") },
+                      { label: "No", icon: <ThumbsDown className="h-4 w-4" />, onClick: () => giveFeedback(r.title, "disliked"), variant: "destructive" },
+                    ]}
+                  >
+                    <div className={`rounded-2xl border p-4 transition ${ready ? "bg-gradient-to-br from-emerald-500/10 via-card to-card border-emerald-500/30" : "bg-card"}`}>
+                      <div className="mb-2 flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <h3 className="font-semibold leading-tight flex items-center gap-1.5">
+                            {ready && <Flame className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />}
+                            {r.title}
+                          </h3>
+                          <p className="mt-1 text-sm text-primary">💡 {r.reason}</p>
+                        </div>
+                        <div className="flex gap-1 shrink-0">
+                          <Button size="icon" variant={fb === "liked" ? "default" : "ghost"} className="h-8 w-8" onClick={() => giveFeedback(r.title, "liked")}><ThumbsUp className="h-4 w-4" /></Button>
+                          <Button size="icon" variant={fb === "disliked" ? "default" : "ghost"} className="h-8 w-8" onClick={() => giveFeedback(r.title, "disliked")}><ThumbsDown className="h-4 w-4" /></Button>
+                        </div>
+                      </div>
+                      <div className="mb-3 flex flex-wrap gap-1.5 text-xs">
+                        {ready ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 font-medium"><CheckCircle2 className="h-3 w-3" /> Cucina ora</span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 px-2 py-0.5"><AlertCircle className="h-3 w-3" /> Mancano {missing.length}</span>
+                        )}
+                        <Badge variant="secondary"><Clock className="mr-1 h-3 w-3" />{r.prep_minutes}'</Badge>
+                        <Badge variant="outline"><Wallet className="mr-1 h-3 w-3" />~{r.estimated_cost.toFixed(2)}€</Badge>
+                        {r.difficulty && <Badge variant="outline">{r.difficulty}</Badge>}
+                      </div>
+                      <details className="text-sm" onToggle={(e) => { if ((e.target as HTMLDetailsElement).open) trackView(r.title); }}>
+                        <summary className="cursor-pointer text-muted-foreground text-xs">Ingredienti e preparazione</summary>
+                        <ul className="mt-2 space-y-0.5 text-xs">
+                          {r.ingredients.map((ing, j) => {
+                            const isMissing = !have.has(ing.name.toLowerCase());
+                            return <li key={j} className={isMissing ? "text-amber-700 dark:text-amber-300" : ""}>• {ing.quantity ?? ""}{ing.unit ?? ""} {ing.name}{isMissing ? " (manca)" : ""}</li>;
+                          })}
+                        </ul>
+                        <p className="mt-2 whitespace-pre-line text-xs text-muted-foreground">{r.instructions}</p>
+                      </details>
+                      <div className="mt-3 flex gap-2">
+                        <Button size="sm" variant={ready ? "default" : "outline"} className="flex-1" onClick={() => setPlanFor({ title: r.title, ingredients: r.ingredients })}>
+                          <CalendarPlus className="h-4 w-4" /> {ready ? "Cucina" : "Pianifica"}
+                        </Button>
+                        <Button size="icon" variant="outline" onClick={() => saveRecipe(r)} title="Salva"><BookmarkPlus className="h-4 w-4" /></Button>
+                        {!ready && <Button size="icon" variant="outline" onClick={() => addToShopping(r)} title="Aggiungi mancanti alla spesa">🛒</Button>}
+                      </div>
+                      <p className="mt-2 text-[10px] text-muted-foreground/70 text-center sm:hidden">← swipe per valutare</p>
                     </div>
-                  </div>
-                  <p className="mb-2 text-sm text-primary">💡 {r.reason}</p>
-                  <div className="mb-3 flex flex-wrap gap-2 text-xs">
-                    <Badge><Clock className="mr-1 h-3 w-3" />{r.prep_minutes} min</Badge>
-                    <Badge variant="outline"><Wallet className="mr-1 h-3 w-3" />~{r.estimated_cost.toFixed(2)} €</Badge>
-                    {r.difficulty && <Badge variant="outline">{r.difficulty}</Badge>}
-                  </div>
-                  <details className="text-sm" onToggle={(e) => { if ((e.target as HTMLDetailsElement).open) trackView(r.title); }}>
-                    <summary className="cursor-pointer text-muted-foreground">Ingredienti e preparazione</summary>
-                    <ul className="mt-2 space-y-0.5">
-                      {r.ingredients.map((ing, j) => (<li key={j}>• {ing.quantity ?? ""}{ing.unit ?? ""} {ing.name}</li>))}
-                    </ul>
-                    <p className="mt-2 whitespace-pre-line text-muted-foreground">{r.instructions}</p>
-                  </details>
-                  <div className="mt-3 grid grid-cols-2 gap-2">
-                    <Button size="sm" variant="outline" onClick={() => saveRecipe(r)}><BookmarkPlus className="h-4 w-4" /> Salva</Button>
-                    <Button size="sm" variant="outline" onClick={() => addToShopping(r)}>Mancanti → spesa</Button>
-                  </div>
-                  <Button size="sm" variant="outline" className="w-full mt-2" onClick={() => setPlanFor({ title: r.title, ingredients: r.ingredients })}>
-                    <CalendarPlus className="h-4 w-4" /> Pianifica
-                  </Button>
+                  </SwipeRow>
                 </li>
               );
             })}
