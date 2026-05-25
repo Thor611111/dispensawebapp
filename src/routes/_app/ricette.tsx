@@ -9,8 +9,9 @@ import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Sparkles, Loader2, Clock, Wallet, ThumbsDown, ThumbsUp, Heart, Plus, Trash2, BookmarkPlus, SlidersHorizontal, Barcode, Receipt, AlertCircle, CheckCircle2, CalendarPlus, Search, X, Compass } from "lucide-react";
+import { Sparkles, Loader2, Clock, Wallet, ThumbsDown, ThumbsUp, Heart, Plus, Trash2, BookmarkPlus, SlidersHorizontal, AlertCircle, CheckCircle2, CalendarPlus, Search, X, Compass, ChefHat, Flame } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { SwipeRow } from "@/components/SwipeRow";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -245,15 +246,6 @@ function Ricette() {
   return (
     <div>
       <PageHeader title="Cosa cucino?" subtitle="Ricette pensate per te." />
-
-      <div className="mb-3 grid grid-cols-2 gap-2">
-        <Button asChild size="sm" variant="outline">
-          <Link to="/dispensa/aggiungi" search={{ scan: 1 } as any}><Barcode className="h-4 w-4" /> Scan codice</Link>
-        </Button>
-        <Button asChild size="sm" variant="outline">
-          <Link to="/spesa" search={{ scan: 1 } as any}><Receipt className="h-4 w-4" /> Scan scontrino</Link>
-        </Button>
-      </div>
 
       <Tabs defaultValue="today">
         <TabsList className="w-full">
