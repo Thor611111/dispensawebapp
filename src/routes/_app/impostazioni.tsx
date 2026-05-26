@@ -10,9 +10,8 @@ import { PasswordInput } from "@/components/PasswordInput";
 import { Badge } from "@/components/ui/badge";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { LogOut, Trash2, User, Bell, Utensils, Clock, Home as HomeIcon, ChevronRight, KeyRound, ShieldCheck, Sun, Moon, Monitor, Palette, BarChart3 } from "lucide-react";
+import { LogOut, Trash2, User, Bell, Utensils, Clock, Home as HomeIcon, ChevronRight, KeyRound, ShieldCheck, Palette, BarChart3 } from "lucide-react";
 import { InstallAppCard } from "@/components/InstallAppCard";
-import { useTheme } from "@/lib/theme";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -61,6 +60,7 @@ function ImpostazioniIndex() {
   const sections = [
     ...(isOwner ? [{ to: "/admin" as const, label: "Owner Console", desc: "Gestione app", icon: ShieldCheck }] : []),
     { to: "/impostazioni/profilo", label: "Profilo", desc: profile?.display_name ?? user?.email ?? "", icon: User },
+    { to: "/impostazioni/aspetto", label: "Aspetto", desc: "Tema, colore e font", icon: Palette },
     { to: "/impostazioni/preferenze", label: "Preferenze alimentari", desc: "Diete, allergie, persone", icon: Utensils },
     { to: "/impostazioni/scadenze", label: "Scadenze e budget", desc: "Avvisi e tetti di spesa", icon: Clock },
     { to: "/impostazioni/notifiche", label: "Notifiche", desc: "Promemoria e canali", icon: Bell },
@@ -73,7 +73,6 @@ function ImpostazioniIndex() {
     <div>
       <PageHeader title="Impostazioni" subtitle={user?.email ?? ""} />
       <InstallAppCard />
-      <ThemeCard />
       <ul className="divide-y rounded-2xl border bg-card overflow-hidden">
         {sections.map((s) => (
           <li key={s.to}>
@@ -107,41 +106,6 @@ function ImpostazioniIndex() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-      </div>
-    </div>
-  );
-}
-
-function ThemeCard() {
-  const { theme, setTheme } = useTheme();
-  const options = [
-    { v: "light" as const, l: "Chiaro", Icon: Sun },
-    { v: "dark" as const, l: "Scuro", Icon: Moon },
-    { v: "system" as const, l: "Sistema", Icon: Monitor },
-  ];
-  return (
-    <div className="mb-3 rounded-2xl border bg-card p-4">
-      <div className="mb-3 flex items-center gap-2">
-        <Palette className="h-4 w-4 text-primary" />
-        <p className="text-sm font-medium">Aspetto</p>
-      </div>
-      <div className="grid grid-cols-3 gap-2">
-        {options.map(({ v, l, Icon }) => (
-          <button
-            key={v}
-            type="button"
-            onClick={() => setTheme(v)}
-            className={
-              "flex flex-col items-center gap-1.5 rounded-xl border px-2 py-3 text-xs font-medium transition " +
-              (theme === v
-                ? "border-primary bg-primary/10 text-primary"
-                : "border-border bg-background hover:bg-secondary/40 text-muted-foreground")
-            }
-          >
-            <Icon className="h-4 w-4" />
-            {l}
-          </button>
-        ))}
       </div>
     </div>
   );

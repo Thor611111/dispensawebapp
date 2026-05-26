@@ -98,7 +98,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "apple-touch-icon", href: "/icon-192.png" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700;9..144,800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" },
+      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap" },
     ],
   }),
   shellComponent: RootShell,
@@ -113,7 +113,7 @@ function RootShell({ children }: { children: React.ReactNode }) {
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('pantryai-theme')||'system';var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);var r=document.documentElement;if(d){r.classList.add('dark');r.style.colorScheme='dark'}else{r.style.colorScheme='light'}}catch(e){}})();`,
+            __html: `(function(){try{var t=localStorage.getItem('pantryai-theme')||'system';var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);var r=document.documentElement;if(d){r.classList.add('dark');r.style.colorScheme='dark'}else{r.style.colorScheme='light'}var A={salvia:['oklch(0.55 0.09 150)','oklch(0.7 0.12 150)'],terracotta:['oklch(0.65 0.17 40)','oklch(0.72 0.17 45)'],oceano:['oklch(0.58 0.13 235)','oklch(0.7 0.14 235)'],lavanda:['oklch(0.6 0.13 295)','oklch(0.72 0.14 295)'],ambra:['oklch(0.7 0.15 75)','oklch(0.78 0.16 75)'],grafite:['oklch(0.42 0.02 250)','oklch(0.75 0.02 250)']};var a=localStorage.getItem('pantryai-accent')||'salvia';var v=(A[a]||A.salvia)[d?1:0];r.style.setProperty('--primary',v);r.style.setProperty('--accent',v);r.style.setProperty('--ring',v);var F={sistema:['ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", Roboto, sans-serif','ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", Roboto, sans-serif'],moderno:['\"Inter\", ui-sans-serif, system-ui, sans-serif','\"Inter\", ui-sans-serif, system-ui, sans-serif'],serif:['\"Plus Jakarta Sans\", ui-sans-serif, system-ui, sans-serif','\"Fraunces\", ui-serif, Georgia, serif'],rotondo:['\"Nunito\", ui-sans-serif, system-ui, sans-serif','\"Nunito\", ui-sans-serif, system-ui, sans-serif']};var f=localStorage.getItem('pantryai-font')||'sistema';var ff=F[f]||F.sistema;r.style.setProperty('--font-body',ff[0]);r.style.setProperty('--font-display',ff[1])}catch(e){}})();`,
           }}
         />
         <HeadContent />
