@@ -44,7 +44,7 @@ export function SwipeRow({
   };
 
   return (
-    <div className={cn("relative overflow-hidden rounded-xl", className)}>
+    <div className={cn("relative overflow-hidden rounded-2xl", className)}>
       <div className="absolute inset-y-0 right-0 flex">
         {actions.map((a, i) => (
           <button
@@ -52,8 +52,8 @@ export function SwipeRow({
             type="button"
             onClick={() => { a.onClick(); setOffset(0); setOpen(false); }}
             className={cn(
-              "flex h-full w-24 flex-col items-center justify-center gap-1 text-xs font-medium",
-              a.variant === "destructive" ? "bg-destructive text-destructive-foreground" : "bg-secondary text-secondary-foreground",
+              "flex h-full w-24 flex-col items-center justify-center gap-1 text-xs font-semibold transition-all active:scale-95",
+              a.variant === "destructive" ? "bg-destructive text-destructive-foreground" : "bg-primary text-primary-foreground",
             )}
           >
             {a.icon ?? <Trash2 className="h-4 w-4" />}
@@ -62,7 +62,7 @@ export function SwipeRow({
         ))}
       </div>
       <div
-        className="relative touch-pan-y transition-transform"
+        className="relative touch-pan-y transition-transform duration-200 ease-out"
         style={{ transform: `translateX(${offset}px)` }}
         onTouchStart={(e) => onStart(e.touches[0].clientX)}
         onTouchMove={(e) => onMove(e.touches[0].clientX)}

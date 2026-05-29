@@ -185,3 +185,25 @@
   .shadow-soft { box-shadow: var(--shadow-soft); }
   .shadow-pop { box-shadow: var(--shadow-pop); }
 }
+
+@layer utilities {
+  /* App-feel touch primitives */
+  .tap-scale { transition: transform 0.15s ease; }
+  .tap-scale:active { transform: scale(0.96); }
+
+  /* Hide scrollbar on horizontal carousels (chips, selectors) */
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+  /* Pull-to-feel inner glow on cards */
+  .surface-raised {
+    background: var(--card);
+    box-shadow: var(--shadow-soft);
+    border-radius: 1.25rem;
+  }
+}
+
+@layer base {
+  html, body { -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; }
+  button, a { -webkit-touch-callout: none; }
+}
