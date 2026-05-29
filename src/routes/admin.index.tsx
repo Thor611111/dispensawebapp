@@ -4,6 +4,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { getAdminOverview, triggerDailyNotifications } from "@/lib/admin.functions";
 import { Loader2, Users, Home, Mail, Bell, Send, Activity, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth-context";
 
@@ -37,7 +38,16 @@ function AdminOverview() {
     onError: (e: any) => toast.error(e?.message ?? "Errore"),
   });
 
-  if (isLoading) return <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin" /></div>;
+  if (isLoading) return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <Skeleton key={i} className="h-[88px] rounded-2xl" />
+        ))}
+      </div>
+      <Skeleton className="h-28 rounded-2xl" />
+    </div>
+  );
   if (error) return <div className="rounded-2xl border bg-card p-4 text-sm text-destructive">{error.message}</div>;
   const d: any = data ?? {};
 

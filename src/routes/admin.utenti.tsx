@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/lib/auth-context";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Skeleton } from "@/components/ui/skeleton";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/admin/utenti")({ component: Page });
@@ -46,7 +47,12 @@ function Page() {
 
   const mRole = useMutation({ mutationFn: (v: { userId: string; grant: boolean }) => setRole({ data: { ...v, accessToken: accessToken! } }), onSuccess: () => { refresh(); toast.success("Ruolo aggiornato"); }, onError: (e: any) => toast.error(e?.message) });
 
-  if (isLoading) return <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin" /></div>;
+  if (isLoading) return (
+    <div className="space-y-2">
+      <Skeleton className="h-12 rounded-xl" />
+      {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-20 rounded-xl" />)}
+    </div>
+  );
   if (error) return <div className="rounded-2xl border bg-card p-4 text-sm text-destructive">{error.message}</div>;
 
   const rows = (data as any[]).filter((u) => !filter || u.email?.toLowerCase().includes(filter.toLowerCase()) || u.display_name?.toLowerCase().includes(filter.toLowerCase()));
@@ -187,13 +193,13 @@ function Page() {
       </AlertDialog>
 
       <Dialog open={action?.kind === "impersonate"} onOpenChange={(o) => !o && setAction(null)}>
-        <DialogContent>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Link di impersonificazione</DialogTitle>
             <DialogDescription>Apri questo link in una finestra in incognito per non perdere la sessione owner.</DialogDescription>
           </DialogHeader>
-          <textarea readOnly className="h-32 w-full rounded border bg-muted p-2 text-xs" value={action?.kind === "impersonate" ? action.url : ""} />
-          <DialogFooter>
+          <textarea readOnly className="h-32 w-full break-all rounded border bg-muted p-2 font-mono text-[10px]" value={action?.kind === "impersonate" ? action.url : ""} />
+          <DialogFooter className="flex-col gap-2 sm:flex-row">
             <Button variant="outline" onClick={() => setAction(null)}>Chiudi</Button>
             <Button onClick={() => { if (action?.kind === "impersonate") { navigator.clipboard.writeText(action.url); toast.success("Copiato"); } }}>Copia link</Button>
           </DialogFooter>
