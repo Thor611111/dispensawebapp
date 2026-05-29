@@ -7,6 +7,7 @@ import { Loader2, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useMemo, useState } from "react";
 
 export const Route = createFileRoute("/admin/logs")({ component: Page });
@@ -24,6 +25,17 @@ function download(name: string, content: string) {
   const a = document.createElement("a"); a.href = url; a.download = name; a.click(); URL.revokeObjectURL(url);
 }
 
+function LogSkeleton() {
+  return (
+    <div className="space-y-2">
+      <Skeleton className="h-10 rounded-xl" />
+      <div className="space-y-1.5 rounded-2xl border bg-card p-2">
+        {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-8 rounded-md" />)}
+      </div>
+    </div>
+  );
+}
+
 function LogTable({ rows, columns, exportName }: { rows: any[]; columns: { key: string; label: string }[]; exportName: string }) {
   const [q, setQ] = useState("");
   const filtered = useMemo(() => {
@@ -31,6 +43,10 @@ function LogTable({ rows, columns, exportName }: { rows: any[]; columns: { key: 
     const s = q.toLowerCase();
     return rows.filter((r) => JSON.stringify(r).toLowerCase().includes(s));
   }, [rows, q]);
+  const fmt = (k: string, v: any) =>
+    k === "created_at" && v ? new Date(v).toLocaleString("it-IT") :
+    typeof v === "object" && v !== null ? JSON.stringify(v) :
+    String(v ?? "");
   return (
     <div className="space-y-2">
       <div className="flex gap-2">
@@ -39,7 +55,28 @@ function LogTable({ rows, columns, exportName }: { rows: any[]; columns: { key: 
           <Download className="h-3 w-3" /> CSV
         </Button>
       </div>
-      <div className="max-h-[60vh] overflow-auto rounded-2xl border bg-card">
+
+      {/* Mobile: card list */}
+      <ul className="max-h-[58vh] space-y-2 overflow-y-auto pr-1 md:hidden">
+        {filtered.length === 0 && <li className="rounded-xl border bg-card p-4 text-center text-xs text-muted-foreground">Nessun risultato</li>}
+        {filtered.map((r, i) => (
+          <li key={r.id ?? i} className="rounded-xl border bg-card p-3 text-[11px]">
+            {columns.map((c) => {
+              const v = fmt(c.key, r[c.key]);
+              if (!v) return null;
+              return (
+                <div key={c.key} className="flex gap-2 border-b border-border/40 py-1 last:border-0">
+                  <span className="w-20 shrink-0 text-[10px] uppercase tracking-wide text-muted-foreground">{c.label}</span>
+                  <span className="min-w-0 flex-1 break-words font-medium">{v}</span>
+                </div>
+              );
+            })}
+          </li>
+        ))}
+      </ul>
+
+      {/* Desktop: table */}
+      <div className="hidden max-h-[60vh] overflow-auto rounded-2xl border bg-card md:block">
         <table className="w-full text-xs">
           <thead className="sticky top-0 bg-secondary/80"><tr>
             {columns.map((c) => <th key={c.key} className="px-2 py-1.5 text-left">{c.label}</th>)}
@@ -77,27 +114,27 @@ function Page() {
 
   return (
     <Tabs defaultValue="activity">
-      <TabsList>
-        <TabsTrigger value="activity">Attività admin</TabsTrigger>
-        <TabsTrigger value="email">Email</TabsTrigger>
-        <TabsTrigger value="push">Push</TabsTrigger>
+      <TabsList className="grid w-full grid-cols-3">
+        <TabsTrigger value="activity" className="text-xs sm:text-sm">Attività</TabsTrigger>
+        <TabsTrigger value="email" className="text-xs sm:text-sm">Email</TabsTrigger>
+        <TabsTrigger value="push" className="text-xs sm:text-sm">Push</TabsTrigger>
       </TabsList>
       <TabsContent value="activity" className="mt-4">
-        {qAct.isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : qAct.error ? <p className="text-destructive">{(qAct.error as any).message}</p> :
+        {qAct.isLoading ? <LogSkeleton /> : qAct.error ? <p className="text-destructive">{(qAct.error as any).message}</p> :
           <LogTable rows={qAct.data ?? []} exportName="admin-activity" columns={[
             { key: "created_at", label: "Data" }, { key: "source", label: "Origine" },
             { key: "level", label: "Livello" }, { key: "message", label: "Messaggio" }, { key: "metadata", label: "Metadata" },
           ]} />}
       </TabsContent>
       <TabsContent value="email" className="mt-4">
-        {qEmail.isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : qEmail.error ? <p className="text-destructive">{(qEmail.error as any).message}</p> :
+        {qEmail.isLoading ? <LogSkeleton /> : qEmail.error ? <p className="text-destructive">{(qEmail.error as any).message}</p> :
           <LogTable rows={qEmail.data ?? []} exportName="email-log" columns={[
             { key: "created_at", label: "Data" }, { key: "template_name", label: "Template" },
             { key: "recipient_email", label: "Destinatario" }, { key: "status", label: "Stato" }, { key: "error_message", label: "Errore" },
           ]} />}
       </TabsContent>
       <TabsContent value="push" className="mt-4">
-        {qPush.isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : qPush.error ? <p className="text-destructive">{(qPush.error as any).message}</p> :
+        {qPush.isLoading ? <LogSkeleton /> : qPush.error ? <p className="text-destructive">{(qPush.error as any).message}</p> :
           <LogTable rows={qPush.data ?? []} exportName="push-log" columns={[
             { key: "created_at", label: "Data" }, { key: "title", label: "Titolo" },
             { key: "category", label: "Categoria" }, { key: "status", label: "Stato" }, { key: "error_message", label: "Errore" },

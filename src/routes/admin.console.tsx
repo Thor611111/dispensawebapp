@@ -68,45 +68,54 @@ function Page() {
 
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_220px]">
-      <div className="rounded-2xl border bg-zinc-950 text-zinc-100 shadow-inner">
-        <div ref={scrollRef} className="h-[60vh] overflow-y-auto p-4 font-mono text-xs leading-relaxed">
-          {lines.map((l, i) => (
-            <pre key={i} className={
-              l.kind === "in" ? "text-emerald-400" :
-              l.kind === "err" ? "text-red-400 whitespace-pre-wrap" :
-              l.kind === "sys" ? "text-zinc-500 italic" :
-              "text-zinc-200 whitespace-pre-wrap"
-            }>{l.text}</pre>
+      {/* Quick commands first on mobile so terminal stays anchored to keyboard */}
+      <div className="order-2 space-y-2 lg:order-2">
+        <h2 className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Comandi rapidi</h2>
+        <div className="flex flex-wrap gap-2 lg:flex-col">
+          <Button variant="outline" size="sm" className="flex-1 justify-start lg:w-full" onClick={() => cron.mutate()} disabled={cron.isPending}>
+            <Bell className="h-3 w-3" /> Notifiche
+          </Button>
+          {QUICK.map((q) => (
+            <Button key={q.cmd} variant="outline" size="sm" className="flex-1 justify-start lg:w-full" onClick={() => submit(q.cmd)}>
+              <q.icon className="h-3 w-3" /> {q.label}
+            </Button>
           ))}
         </div>
-        <div className="flex items-center gap-2 border-t border-zinc-800 p-2">
-          <span className="font-mono text-xs text-emerald-400">pantryai&gt;</span>
-          <Input
-            value={val}
-            onChange={(e) => setVal(e.target.value)}
-            onKeyDown={onKey}
-            placeholder="user reset-password user@example.com"
-            className="border-0 bg-transparent font-mono text-xs text-zinc-100 focus-visible:ring-0"
-            autoFocus
-          />
-          <Button size="sm" onClick={() => submit(val)} disabled={m.isPending}><Send className="h-3 w-3" /></Button>
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <h2 className="text-xs font-semibold uppercase text-muted-foreground">Comandi rapidi</h2>
-        <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => cron.mutate()} disabled={cron.isPending}>
-          <Bell className="h-3 w-3" /> Notifiche giornaliere
-        </Button>
-        {QUICK.map((q) => (
-          <Button key={q.cmd} variant="outline" size="sm" className="w-full justify-start" onClick={() => submit(q.cmd)}>
-            <q.icon className="h-3 w-3" /> {q.label}
-          </Button>
-        ))}
         <div className="rounded-xl border bg-card p-3 text-[10px] text-muted-foreground">
           <p className="font-semibold text-foreground">Suggerimenti</p>
           <p>↑ ↓ scorre lo storico</p>
           <p>`help` mostra tutti i comandi</p>
+        </div>
+      </div>
+
+      <div className="order-1 overflow-hidden rounded-2xl border bg-zinc-950 text-zinc-100 shadow-inner lg:order-1">
+        <div ref={scrollRef} className="h-[55vh] overflow-y-auto overflow-x-hidden p-3 font-mono text-[11px] leading-relaxed sm:p-4 sm:text-xs">
+          {lines.map((l, i) => (
+            <pre key={i} className={
+              "whitespace-pre-wrap break-words " + (
+                l.kind === "in" ? "text-emerald-400" :
+                l.kind === "err" ? "text-red-400" :
+                l.kind === "sys" ? "text-zinc-500 italic" :
+                "text-zinc-200"
+              )
+            }>{l.text}</pre>
+          ))}
+          {m.isPending && <p className="text-zinc-500 italic">esecuzione in corso…</p>}
+        </div>
+        <div className="flex items-center gap-1.5 border-t border-zinc-800 p-2">
+          <span className="shrink-0 font-mono text-[11px] text-emerald-400">$</span>
+          <Input
+            value={val}
+            onChange={(e) => setVal(e.target.value)}
+            onKeyDown={onKey}
+            placeholder="es. help"
+            className="h-9 min-w-0 flex-1 rounded-md border-0 bg-transparent px-1 font-mono text-[12px] text-zinc-100 shadow-none placeholder:text-zinc-600 focus-visible:ring-0"
+            autoFocus
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+          />
+          <Button size="sm" className="h-9 shrink-0 px-3" onClick={() => submit(val)} disabled={m.isPending}><Send className="h-3.5 w-3.5" /></Button>
         </div>
       </div>
     </div>
